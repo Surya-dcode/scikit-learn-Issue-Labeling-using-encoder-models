@@ -1,0 +1,88 @@
+{
+  "timestamp": "20250915_120614",
+  "models": {
+    "DistilBERT": {
+      "micro_f1": 0.8396946564885496,
+      "macro_f1": 0.5509974851518366,
+      "per_label_f1": {
+        "Bug": 0.903448275862069,
+        "New Feature": 0.9382716049382716,
+        "Documentation": 0.8571428571428571,
+        "Build / CI": 0.3888888888888889,
+        "help wanted": 0.0,
+        "RFC": 0.7692307692307693,
+        "Enhancement": 0.0
+      },
+      "threshold": 0.5
+    },
+    "RoBERTa": {
+      "micro_f1": 0.8584202682563339,
+      "macro_f1": 0.5906189280317881,
+      "per_label_f1": {
+        "Bug": 0.9146757679180887,
+        "New Feature": 0.9397590361445783,
+        "Documentation": 0.859504132231405,
+        "Build / CI": 0.6511627906976745,
+        "help wanted": 0.0,
+        "RFC": 0.7692307692307693,
+        "Enhancement": 0.0
+      },
+      "threshold": 0.5
+    },
+    "DeBERTa": {
+      "micro_f1": 0.8477611940298507,
+      "macro_f1": 0.5682521595566354,
+      "per_label_f1": {
+        "Bug": 0.9140893470790378,
+        "New Feature": 0.9397590361445783,
+        "Documentation": 0.8455284552845529,
+        "Build / CI": 0.5641025641025641,
+        "help wanted": 0.0,
+        "RFC": 0.7142857142857143,
+        "Enhancement": 0.0
+      },
+      "threshold": 0.5
+    }
+  },
+  "label_winners": {
+    "Bug": [
+      "RoBERTa",
+      0.9146757679180887
+    ],
+    "New Feature": [
+      "RoBERTa",
+      0.9397590361445783
+    ],
+    "Documentation": [
+      "RoBERTa",
+      0.859504132231405
+    ],
+    "Build / CI": [
+      "RoBERTa",
+      0.6511627906976745
+    ],
+    "help wanted": [
+      "DistilBERT",
+      0.0
+    ],
+    "RFC": [
+      "DistilBERT",
+      0.7692307692307693
+    ],
+    "Enhancement": [
+      "DistilBERT",
+      0.0
+    ]
+  },
+  "category_wins": {
+    "DistilBERT": 3,
+    "RoBERTa": 4,
+    "DeBERTa": 0
+  },
+  "best_overall": {
+    "model": "RoBERTa",
+    "micro_f1": 0.8584202682563339,
+    "macro_f1": 0.5906189280317881
+  },
+  "recommendation": "Use RoBERTa for production"
+}

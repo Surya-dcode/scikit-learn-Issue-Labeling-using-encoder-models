@@ -1,0 +1,33 @@
+{
+  "model_version": "distilbert_v1",
+  "thresholds": {
+    "Bug": 0.5,
+    "New Feature": 0.5,
+    "Documentation": 0.5,
+    "Build / CI": 0.15,
+    "help wanted": 0.3,
+    "RFC": 0.5,
+    "Enhancement": 0.1
+  },
+  "performance_metrics": {
+    "overall_micro_f1": 0.8243831640058055,
+    "overall_macro_f1": 0.5950373233093218,
+    "main_categories_f1": 0.8996209126477326,
+    "per_label_f1": {
+      "Bug": 0.903448275862069,
+      "New Feature": 0.9382716049382716,
+      "Documentation": 0.8571428571428571,
+      "Build / CI": 0.5490196078431373,
+      "help wanted": 0.0,
+      "RFC": 0.7692307692307693,
+      "Enhancement": 0.14814814814814814
+    }
+  },
+  "main_categories": [
+    "Bug",
+    "New Feature",
+    "Documentation"
+  ],
+  "coverage": "90.9%",
+  "recommended_use": "Focus on Bug, New Feature, Documentation classification"
+}
