@@ -1,0 +1,1597 @@
+{
+  "timestamp": "2025-09-14T22:23:46.225785",
+  "total_issues": 116,
+  "issues": [
+    {
+      "number": 32178,
+      "title": "Trees: impurity decrease calculation is buggy when there are missing values",
+      "body": "### Describe the bug\n\nIn decision trees (both classif. and regression), the impurity decrease calculation is sometimes wrong when there are missing values in X.\n\nThis can lead to unexpectedly shallow trees when using `min_impurity_decrease` to control depth.\n\nThis was discovered by investigations started by this issue: #32175\n\n### Steps/Code to Reproduce\n\n```Python\nimport numpy as np\nfrom sklearn.tree import DecisionTreeRegressor\n\nX = np.vstack([\n    [0, 0, 0, 0, 1, 2, 3, 4],\n    [1, 2, 1, 2, 1, 2, 1, 2]\n]).swapaxes(0, 1).astype(float)\ny = [0, 0, 0, 0, 1, 1, 1, 1]\n\nn_leaves = []\nfor _ in range(1000):\n    tree = DecisionTreeRegressor(max_depth=1, min_impurity_decrease=0.25).fit(X, y)\n    # all the trees have two leaves\n    assert tree.tree_.n_leaves == 2\n\nX[X == 0] = np.nan\nn_leaves_w_missing = []\nfor _ in range(1000):\n    tree = DecisionTreeRegressor(max_depth=1, min_impurity_decrease=0.25).fit(X, y)\n    n_leaves_w_missing.append(tree.tree_.n_leaves)\n\nprint(np.bincount(n_leaves_w_missing))\n# prints [0 ~500 ~500]\n```\n\nThe last print shows that in approx. half of the cases, the tree has only one leaf (i.e. no split).\n\n### Expected Results\n\nChaning 0 by nan should have no impact on the tree construction in this example.\n\nThe tree should always have one split (and hence two leaves).\n\n### Actual Results\n\nIn approx. half of the cases, the tree has only one leaf (i.e. no split).\n\n### Versions\n\n```shell\nSystem:\n    python: 3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]\nexecutable: /home/arthur/dev-perso/scikit-learn/sklearn-env/bin/python\n   machine: Linux-6.14.0-29-generic-x86_64-with-glibc2.39\n\nPython dependencies:\n      sklearn: 1.8.dev0\n          pip: None\n   setuptools: 80.9.0\n        numpy: 2.3.3\n        scipy: 1.16.2\n       Cython: 3.1.3\n       pandas: None\n   matplotlib: 3.10.6\n       joblib: 1.5.2\nthreadpoolctl: 3.6.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: blas\n   internal_api: openblas\n    num_threads: 16\n         prefix: libscipy_op...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-09-13T16:12:22Z",
+      "updated_at": "2025-09-13T16:12:22Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32178"
+    },
+    {
+      "number": 32176,
+      "title": "⚠️ CI failed on Ubuntu_Atlas.ubuntu_atlas (last failure: Sep 13, 2025) ⚠️",
+      "body": "**CI failed on [Ubuntu_Atlas.ubuntu_atlas](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=79967&view=logs&j=689a1c8f-ff4e-5689-1a1a-6fa551ae9eba)** (Sep 13, 2025)\n- test_fit_transform[98]",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-09-13T03:02:07Z",
+      "updated_at": "2025-09-14T03:01:46Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32176"
+    },
+    {
+      "number": 32175,
+      "title": "Unexepected behavior of tree splits: missing values handling is buggy?",
+      "body": "### Describe the bug\n\nWhen adding a sanity check in the best split function (`_splitter.pxy`), I get a bunch of tests failing. This probably reveal a bug in missing values handling.\n\n### Steps/Code to Reproduce\n\nAdd those lines after [this line](https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/tree/_splitter.pyx#L517).\n```Python\ncurrent_proxy_improvement = criterion.proxy_impurity_improvement()\nif current_proxy_improvement < best_proxy_improvement - 1:\n    raise ValueError(f\"Unconsistent improvement {current_proxy_improvement} < {best_proxy_improvement}\" )\n```\n\nAnd then run the following tests: `pytest sklearn/ensemble/tests/test_forest.py sklearn/tree/tests/`\n\n### Expected Results\n\nNo error is thrown, proving the final partitionning of samples is optimal and the children impurities are the correct/optimal ones.\n\n### Actual Results\n\nMany tests fail. I will split them into three categories, based on the alleged cause:\n\n\n1. **MAE criterion**\nErrors that have likely the same cause to than those two issues: #32099 #10725. The current implementation of the MAE criterion is slightly buggy. My PR https://github.com/scikit-learn/scikit-learn/pull/32100 will fix it.\n\n```\nFAILED sklearn/ensemble/tests/test_forest.py::test_importances[ExtraTreesRegressor-absolute_error-float64] - ValueError: Unconsistent improvement -9.0 < -4.0\nFAILED sklearn/ensemble/tests/test_forest.py::test_importances[ExtraTreesRegressor-absolute_error-float32] - ValueError: Unconsistent improvement -9.0 < -4.0\n```\n\nOn the branch of my PR those tests don't fail.\n \n2. **Missing values**\nMany tests related to missing values are failing. As explained in my PR https://github.com/scikit-learn/scikit-learn/pull/32119, the current way missing values are handled is a bit convoluted, and probably a bit buggy\n\n```\nFAILED sklearn/ensemble/tests/test_forest.py::test_missing_values_is_resilient[make_regression-ExtraTreesRegressor] - ValueError: Unconsistent improvement 222739.5025534111 < 230516.59488172...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-09-12T21:41:27Z",
+      "updated_at": "2025-09-13T15:53:56Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32175"
+    },
+    {
+      "number": 32174,
+      "title": "Fix rendering of D2 Brier score section in User Guide",
+      "body": "_This is an issue for a contributor who has worked with rst and sphinx documentation before, or who wants to spend 10 hours to learn on the task. It is not suitable for ai agents._\n\nThe newly added section about **D2 Brier score** (added via #28971) doesn't render correctly in the User Guide.\nIn the 1.8 dev version documentation it renders as \n\n```\n|details-start| D2 Brier score |details-split|\n...\n|details-end|\n```\n\nWe probably need to use .`. dropdown::` like in the section above.\n\nMaybe @elhambb, do you want to take care of it?\nAlso @star1327p or @EmilyXinyi, if that's not too boring for you.",
+      "labels": [
+        "Easy",
+        "Documentation"
+      ],
+      "state": "open",
+      "created_at": "2025-09-12T20:16:03Z",
+      "updated_at": "2025-09-13T17:46:17Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32174"
+    },
+    {
+      "number": 32171,
+      "title": "⚠️ CI failed on Wheel builder (last failure: Sep 14, 2025) ⚠️",
+      "body": "**CI is still failing on [Wheel builder](https://github.com/scikit-learn/scikit-learn/actions/runs/17706003886)** (Sep 14, 2025)",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-09-12T15:46:41Z",
+      "updated_at": "2025-09-14T15:57:57Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32171"
+    },
+    {
+      "number": 32168,
+      "title": "Unexpected behavior when combining FunctionTransformer and pandas DataFrames",
+      "body": "### Describe the bug\n\nWhen using a pandas `DataFrame` with the `FunctionTransformer(func=..., feature_names_out='one-to-one')` on data with the wrong column order, the column names are mixed. While this behavior might be derived from the documentation, it still felt unexpected.\n\n### Steps/Code to Reproduce\n\n```py\nfrom sklearn.preprocessing import FunctionTransformer\nimport pandas as pd\n\nnewdf = pd.DataFrame({\"a\": [1,2], \"b\": [True, False], \"c\": [\"x\", \"y\"]})\nnewdf_shuffled_cols = newdf[[\"c\", \"a\", \"b\"]]\n\ndef testfun(x):\n    return x\n\n# From the docs:\n# If func returns an output with a columns attribute, then the columns is \n# enforced to be consistent with the output of get_feature_names_out.\n\nfunctrans = FunctionTransformer(func=testfun, feature_names_out='one-to-one')\nfunctrans.fit(newdf)\ntransformed = functrans.transform(newdf_shuffled_cols)\nprint(newdf[\"c\"])\nprint(transformed[\"c\"])\n```\n\n### Expected Results\n\nThe same column is returned.\n\n### Actual Results\n\n```\n0    x\n1    y\nName: c, dtype: object\n0     True\n1    False\nName: c, dtype: bool\n```\n\n### Versions\n\n```shell\nSystem:\n    python: 3.13.7 | packaged by conda-forge | (main, Sep  3 2025, 14:30:35) [GCC 14.3.0]\nexecutable: /opt/conda/envs/sklearn_burg/bin/python3\n   machine: Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35\n\nPython dependencies:\n      sklearn: 1.7.2\n          pip: 25.2\n   setuptools: 80.9.0\n        numpy: 2.3.3\n        scipy: 1.16.1\n       Cython: None\n       pandas: 2.3.2\n   matplotlib: None\n       joblib: 1.5.2\nthreadpoolctl: 3.6.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: blas\n   internal_api: openblas\n    num_threads: 28\n         prefix: libopenblas\n       filepath: /opt/conda/envs/sklearn_burg/lib/libopenblasp-r0.3.30.so\n        version: 0.3.30\nthreading_layer: pthreads\n   architecture: Haswell\n\n       user_api: openmp\n   internal_api: openmp\n    num_threads: 28\n         prefix: libgomp\n       filepath: /opt/conda/envs/sklearn_burg/lib/libgomp.so.1.0.0\n      ...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-09-12T11:05:12Z",
+      "updated_at": "2025-09-12T11:12:17Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32168"
+    },
+    {
+      "number": 32167,
+      "title": "`permutation_importance` errors with `polars` dataframe and `ColumnTransformer`",
+      "body": "### Describe the bug\n\nHaving polars dataframe with `ColumnTransformer` lets `permutation_importance` crash.\n\nMaybe related to the warnings reported in this issue https://github.com/scikit-learn/scikit-learn/issues/28488. But here, `permuation_importance` errors.\n\n### Steps/Code to Reproduce\n\nA MWE\n```\nimport polars as pl\n\nfrom sklearn.datasets import make_classification\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.pipeline import Pipeline\nfrom sklearn.compose import ColumnTransformer\nfrom sklearn.preprocessing import StandardScaler\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.inspection import permutation_importance\n\nX, y = make_classification(n_samples=100, n_features=5, random_state=42)\nfeature_names = [f'feature_{i}' for i in range(X.shape[1])]\n\ndf = pl.DataFrame({name: X[:, i] for i, name in enumerate(feature_names)})\ndf = df.with_columns(pl.Series(\"target\", y))\n\nX_train, X_test, y_train, y_test = train_test_split(df.select(feature_names), df['target'], test_size=0.2, random_state=42)\n\npreprocessor = ColumnTransformer(\n    transformers=[\n        ('scaler', StandardScaler(), feature_names)  # using feature names here\n    ]\n)\npreprocessor.set_output(transform=\"polars\")\n\npipeline = Pipeline(steps=[\n    ('preprocessor', preprocessor),\n    ('classifier', LogisticRegression())\n])\n\nmodel = pipeline.fit(X_train, y_train)\n\npermutation_importance(model, X_test, y_test)\n```\n\n### Expected Results\n\nNo error is shown.\n\n### Actual Results\n\n```\n.../python3.12/site-packages/sklearn/utils/_indexing.py:259, in _safe_indexing(X, indices, axis)\n    248     raise ValueError(\n    249         \"'X' should be a 2D NumPy array, 2D sparse matrix or \"\n    250         \"dataframe when indexing the columns (i.e. 'axis=1'). \"\n    251         \"Got {} instead with {} dimension(s).\".format(type(X), len(X.shape))\n    252     )\n    254 if (\n    255     axis == 1\n    256     and indices_dtype == \"str\"\n    257     and not (_is_pandas_df(X) or _use_interchange_p...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-09-12T07:59:26Z",
+      "updated_at": "2025-09-12T13:47:53Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32167"
+    },
+    {
+      "number": 32162,
+      "title": "Deprecate n_jobs in LogisticRegression and evaluate multi-threading",
+      "body": "When https://github.com/scikit-learn/scikit-learn/pull/32073 is merged, `n_jobs` will have no effect in `LogisticRegression` so should be deprecated.\n\nIt's also a good time to consider enabling multi-threading to compute the logistic regression path here https://github.com/scikit-learn/scikit-learn/blob/21e0df780772e9567b09249a05a42dfde6de465d/sklearn/linear_model/_logistic.py#L1373-L1388\n\nSo far it was disabled because parallelism was happening at a higher level using joblib. Now we should benchmark the impact of enabling multi-threading to see if it's positive for all the solvers and a wide range of problems.\nLike for other estimators using OpenMP-based multi-threading, the number of thread should not be controlled by `n_jobs` but instead use all available core (`n_threads = _openmp_effective_n_threads()`).",
+      "labels": [
+        "API",
+        "Needs Benchmarks"
+      ],
+      "state": "open",
+      "created_at": "2025-09-11T15:06:38Z",
+      "updated_at": "2025-09-12T16:33:37Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32162"
+    },
+    {
+      "number": 32161,
+      "title": "Add an option to OrdinalEncoder to sort encoding by decreasing frequencies",
+      "body": "### Describe the workflow you want to enable\n\nAt the moment, when no categories are provided, the default ordering of categories for a given categorical column is based on the lexicographical ordering of the categories observed in the training set.\n\nHowever, this is quite arbitrary and one could instead provide an option to encode such values based on their observed frequency in the training set.\n\nThe motivation would be to nudge the inductive bias of tree-based models (and models that favor axis aligned decision functions) into separating nominal from rare values more easily (e.g. fewer splits in a tree). This might be especially useful for outlier detection models such as `IsolationForest`.\n\nRelated to #15796.\n\n### Describe your proposed solution\n\n\nExtend the `categories` option to have:\n\n- `categories=\"lexigraphical\"` (default for backward compat);\n- `categories=user_provided_list` (same as today);\n- `categories=\"frequency\"` (the new option).\n\nIf `categories=\"frequency\"`, then the generated category encodings would be:\n\n- 0 would encode the most frequent category observed in the training set,\n- 1 the second most frequent,\n- ...\n- and so on until the least frequent categories.\n\nTie breaking could be based on the lexicographical order to ensure that the behavior of `OrdinalEncoder` remains invariant under a shuffling of the rows of the training set.\n\n\n### Describe alternatives you've considered, if relevant\n\n- Use `TargetEncoder` that leverages some frequency info (mixed with the mean value of the target variable), but this is a supervised method and would therefore not be suitable for unsupervised anomaly detection tasks, for instance.\n\n- Introduce a new dedicated class, e.g. `FrequencyEncoder`.\n  - pro: allow using the observed relative frequency (between 0 and 1) as value (but would collapse equally frequent categories into the same numerical value).\n  - con: introduces yet another estimator class in our public API.\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-09-11T14:27:27Z",
+      "updated_at": "2025-09-13T17:43:47Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32161"
+    },
+    {
+      "number": 32155,
+      "title": "ColumnTransformer.fit() fails on polars.DataFrame: AttributeError: 'DataFrame' object has no attribute 'size'",
+      "body": "### Describe the bug\n\nFitting a sklearn.compose.ColumnTransformer with *more than one* transformer on a polars.DataFrame yields the error:\n\n> AttributeError: 'DataFrame' object has no attribute 'size'\n\n* Fitting works fine when converting the DataFrame to pandas beforehand\n* Fitting also works fine with a *polars* DataFrame for as long as only a *single* transformer is passed to ColumnTransformer\n\nI am using the latest stable version of sklearn (1.7.2) and polars (1.33.1).\n\nThank you so much for looking into this!\n\n### Steps/Code to Reproduce\n\n```python\nimport polars as pl\nfrom sklearn.preprocessing import OneHotEncoder\nfrom sklearn.compose import ColumnTransformer\n\n## Generate toy data (polars DataFrame)\ndf = pl.DataFrame({\n    'some_categories': list('abc'),\n    'some_numbers': range(3)\n})\n\nprint(df)\nshape: (3, 2)\n┌─────────────────┬──────────────┐\n│ some_categories ┆ some_numbers │\n│ ---             ┆ ---          │\n│ str             ┆ i64          │\n╞═════════════════╪══════════════╡\n│ a               ┆ 0            │\n│ b               ┆ 1            │\n│ c               ┆ 2            │\n└─────────────────┴──────────────┘\n\n## Define a ColumnTransformer and fit on polars df -> AttributeError\npreprocessor = ColumnTransformer(\n    transformers=[\n        ('cat', OneHotEncoder(handle_unknown='ignore', drop='first'), ['some_categories']),\n        ('num', 'passthrough', [\"some_numbers\"])\n    ])\n\n## Fit on polars df\npreprocessor.fit(df) ## AttributeError: 'DataFrame' object has no attribute 'size'\n\n## Fit on pandas df\npreprocessor.fit(df.to_pandas()) ## works fine for pandas df\n\n\n## Define ColumnTransformers with only one transformer each and fit on polars df -> works fine\npreprocessor1 = ColumnTransformer(\n    transformers=[\n        ('cat', OneHotEncoder(handle_unknown='ignore', drop='first'), ['some_categories'])\n    ])\n\npreprocessor2 = ColumnTransformer(\n    transformers=[\n        ('num', 'passthrough', [\"some_numbers\"])\n    ])\n\npreprocessor1.fit(df) ## works\npreproce...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-09-11T07:51:18Z",
+      "updated_at": "2025-09-11T10:15:47Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32155"
+    },
+    {
+      "number": 32154,
+      "title": "GridSearchCV cannot obtain the optimal parameter results.",
+      "body": "### Describe the bug\n\nWhen I used GridSearchCV to obtain the optimal parameters, I found that different cross-validation folds produced inconsistent results.\n\n### Steps/Code to Reproduce\n\n```python3\nX_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.7, random_state=0)\nparam_grid_rf = {'n_estimators': [5, 10, 15, 35, 50, 70]}\ngrid_search = GridSearchCV(RandomForestClassifier(random_state=42), param_grid_rf, cv=3, scoring='roc_auc')\ngrid_search.fit(X_train, y_train)\nbest_params = grid_search.best_params_\nprint(f'{roc_auc_score(y_test, y_proba):.4f}')\n```\n> auc: 0.8859\nbest_params is 50\n\n```python3\nX_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.7, random_state=0)\nparam_grid_rf = {'n_estimators': [50, 70, 80, 90]}\ngrid_search = GridSearchCV(RandomForestClassifier(random_state=42), param_grid_rf, cv=3, scoring='roc_auc')\ngrid_search.fit(X_train, y_train)\nbest_params = grid_search.best_params_\nprint(f'{roc_auc_score(y_test, y_proba):.4f}')\n```\n> auc: 0.8725\nbest_params is 80\n\n### Expected Results\n\nBoth results above should be identical.\n>auc: 0.8859\nbest_params is 50\n\n### Actual Results\n\nBetween the two parameter lists, we should obtain the parameters with the best AUC, not inconsistent ones.\n\n### Versions\n\n```shell\nSystem:\n    python: 3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]\nexecutable: /work/users/suny/mm/.venv/bin/python\n   machine: Linux-5.15.0-143-generic-x86_64-with-glibc2.35\n\nPython dependencies:\n      sklearn: 1.7.2\n          pip: 25.2\n   setuptools: 80.9.0\n        numpy: 2.2.6\n        scipy: 1.15.3\n       Cython: None\n       pandas: 2.3.2\n   matplotlib: 3.10.6\n       joblib: 1.5.2\nthreadpoolctl: 3.6.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: blas\n   internal_api: openblas\n    num_threads: 64\n         prefix: libscipy_openblas\n       filepath: /work/users/suny/mm/.venv/lib/python3.10/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so\n        version: 0.3.29\nthreading_layer: pthreads\n ...",
+      "labels": [
+        "Bug",
+        "Needs Info",
+        "Needs Reproducible Code"
+      ],
+      "state": "open",
+      "created_at": "2025-09-11T07:34:48Z",
+      "updated_at": "2025-09-11T15:54:05Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32154"
+    },
+    {
+      "number": 32153,
+      "title": "⚠️ CI failed on Linux_Runs.pylatest_conda_forge_mkl (last failure: Sep 11, 2025) ⚠️",
+      "body": "**CI failed on [Linux_Runs.pylatest_conda_forge_mkl](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=79876&view=logs&j=dde5042c-7464-5d47-9507-31bdd2ee0a3a)** (Sep 11, 2025)\n- Test Collection Failure",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-11T02:34:50Z",
+      "updated_at": "2025-09-11T14:23:54Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32153"
+    },
+    {
+      "number": 32152,
+      "title": "Allow `categories` parameter in `OrdinalEncoder` to accept a dict of column names → categories",
+      "body": "### Describe the workflow you want to enable\n\nCurrently, the `categories` parameter in `OrdinalEncoder` only accepts:\n\n- `\"auto\"`, or\n- a list of lists, where the position of each list corresponds to the order of columns in the input.\n\nThis makes it _somewhat inconvenient_ when working with pandas DataFrames, since one must manually align the category lists with the column order.\n\n### Describe your proposed solution\n\nAllow `categories` to also accept a dictionary mapping column names to category lists. For example:\n\n```python\nencoder = OrdinalEncoder(categories={\n    \"size\": [\"small\", \"medium\", \"large\"],\n    \"priority\": [\"low\", \"medium\", \"high\"]\n})\n```\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n#### Motivation\n\n- Improves ergonomics when working with pandas (very common in scikit-learn pipelines).\n- Reduces potential bugs from mismatched column ordering.\n- Makes the API consistent with the way many users already think about preprocessing (column → transformation).",
+      "labels": [
+        "New Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-09-10T16:38:59Z",
+      "updated_at": "2025-09-11T17:05:30Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32152"
+    },
+    {
+      "number": 32150,
+      "title": "Latex not correctly rendered for ridge",
+      "body": "### Describe the issue linked to the documentation\n\nDescription\nIn the online API reference, formula is displayed as:\n`||y - Xw||^2_2 + alpha * ||w||^2_2`\n\nit should instead look like\n\n<img width=\"299\" height=\"77\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f2f77288-d7a6-4ece-8f06-4e2b076c032d\" />\n\nSteps to Reproduce the Issue:\nPlease see [https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html](url)\n\n\n### Suggest a potential alternative/fix\n\n_No response_",
+      "labels": [
+        "Documentation",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-10T15:09:57Z",
+      "updated_at": "2025-09-10T22:28:30Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32150"
+    },
+    {
+      "number": 32146,
+      "title": "Unexpected behavior of the HTML repr of meta-estimators",
+      "body": "Here's a list of some unexpected behaviors of the HTML repr of meta-estimators\n- `Pipeline` doesn't display its named steps\n\n  <img width=\"164\" height=\"95\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/c368188d-544f-4bb1-bfeb-d76490f5146a\" />\n\n  This was maybe intentional ? In comparison `FeatureUnion` does for instance\n\n  <img width=\"282\" height=\"91\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/2a6ded8c-d148-4852-a03c-0a88c1b8bc49\" />\n\n- a `Pipeline` in a meta-estimator doesn't render properly; it doesn't have the dashed border\n  \n  <img width=\"186\" height=\"120\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/471ce468-8597-4fbc-b718-870c4f11a1fd\" />\n\n  Another meta-estimator renders properly\n\n  <img width=\"294\" height=\"116\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/cb467dcd-63c2-4a54-b92a-d6686b3b3bc8\" />\n\n- transformers of `ColumnTransformer` are expandable to show the selected columns, but there's no additional info. I think it should be explicit that these are the selected columns.\n\n  <img width=\"274\" height=\"106\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/e44d47fb-c784-4631-9a73-3d274671430e\" />\n\n  Note that this could be fixed by https://github.com/scikit-learn/scikit-learn/pull/31937\n\n- When the inner estimator of a meta-estimator is not a meta-estimator itself, it's expandable but the dropdown is not useful anymore (it's the non-html repr of the estimator basically):\n\n  <img width=\"169\" height=\"129\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/21723076-ae7e-46e3-8d22-3561aef1b1ec\" />\n\n  Now that we have the parameter table, it's not useful anymore to have the additional repr which is redundant and less informative. I'd be in favor of removing the dropdown\n\n- When the inner estimator of a meta-estimator is a meta-estimator itself, it's expandable but sometimes there's no dropdown or the dropdown is the non-html repr of the meta-estimator, and there's no parameter table....",
+      "labels": [
+        "Documentation",
+        "frontend"
+      ],
+      "state": "open",
+      "created_at": "2025-09-10T10:15:18Z",
+      "updated_at": "2025-09-11T09:19:16Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32146"
+    },
+    {
+      "number": 32145,
+      "title": "New min dependencies broke the doc build",
+      "body": "We didn't run a dock build before merging https://github.com/scikit-learn/scikit-learn/pull/31656 which bumps min dependencies, and it broke the CI, see https://app.circleci.com/pipelines/github/scikit-learn/scikit-learn/70723/workflows/2064650c-116a-405d-9b1d-9cd469b8804f/jobs/317740.\n\ncc/ @GaetandeCast @ogrisel",
+      "labels": [
+        "Build / CI",
+        "Blocker"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-10T09:46:01Z",
+      "updated_at": "2025-09-11T12:14:03Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32145"
+    },
+    {
+      "number": 32125,
+      "title": "Tree module - Broken test: test fails when changing random_state=0 to =1",
+      "body": "In the test `tree/tests/test_tree.py::test_regression_tree_missing_values_toy`, in this [line](https://github.com/scikit-learn/scikit-learn/blob/0033630cd35d5945ea8c1b5beff6efe9583cd523/sklearn/tree/tests/test_tree.py#L2695C1-L2696C1):\n\n```\n    tree = Tree(criterion=criterion, random_state=0).fit(X, y)\n```\n\nif you change `random_state=0` to `random_state=1` all the tests with `Tree` being `ExtraTreeRegressor` fails.\n\nIt is completly logical when you look at the code: when there are missing values the random split (which is what `ExtraTreeRegressor`  does) *randomly* put them to the left or the right. The *randomly* part here is not compatible the test logic. It's a lucky 1/16 chance in the choice of the random_seed that made this test passed until now (I ran the test with 1000 seeds, and it's indeed 1/16, because it's tested on 4 arrays, hence proba = 1/2^4).\n\nI'm willing to open a PR to fix this. My suggestion is to stop running this test on `ExtraTreeRegressor`, there are alreay many tests on `ExtraTreeRegressor`s and the issues linked in the docstring of this test aren't mentionning `ExtraTreeRegressor` anywhere.",
+      "labels": [
+        "module:tree"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-07T18:33:08Z",
+      "updated_at": "2025-09-11T13:26:04Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32125"
+    },
+    {
+      "number": 32122,
+      "title": "⚠️ CI failed on Wheel builder (last failure: Sep 07, 2025) ⚠️",
+      "body": "**CI failed on [Wheel builder](https://github.com/scikit-learn/scikit-learn/actions/runs/17523435997)** (Sep 07, 2025)",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-07T10:00:35Z",
+      "updated_at": "2025-09-08T05:15:52Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32122"
+    },
+    {
+      "number": 32121,
+      "title": "\"Improve documentation on FeatureUnion behavior with polars DataFrame output causing duplicate column names\"",
+      "body": "### Describe the issue linked to the documentation\n\nThe current documentation for FeatureUnion describes its behavior with pandas DataFrames but does not mention how it behaves when used with polars DataFrames. Specifically, FeatureUnion concatenates outputs of its transformers before the set_output wrapper renames columns based on get_feature_names_out. This works fine with pandas but causes issues with polars since polars does not allow creating a DataFrame with duplicate column names. This leads to errors when using FeatureUnion with polars outputs.\n\n### Suggest a potential alternative/fix\n\nThe documentation should mention the behavior difference when using FeatureUnion with polars DataFrames, specifically that concatenation occurs before column renaming. This can cause duplicate column names errors in polars.\n\nIt would be helpful to add a warning or note about this limitation, and suggest possible workarounds, such as manually renaming columns or converting to pandas DataFrame before using FeatureUnion.\n\nIncluding a minimal example demonstrating the issue and how to avoid it would further improve clarity for users.",
+      "labels": [
+        "Documentation",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-07T07:41:58Z",
+      "updated_at": "2025-09-08T07:39:38Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32121"
+    },
+    {
+      "number": 32115,
+      "title": "[ENH] Adding KModes and KPrototypes clustering algorithms",
+      "body": "### Describe the workflow you want to enable\n\nCurrently, scikit-learn users working with datasets that contain categorical features (e.g., `country`, `profession`, `product_type`) face a significant hurdle. The standard practice is to use one-hot encoding before applying algorithms like K-Means.\n\nThis workflow is problematic because:\n1.  **High-Dimensionality:** It drastically increases the dimensionality of the dataset (the \"curse of dimensionality\").\n2.  **Sparsity:** It creates a sparse matrix that is computationally inefficient and poorly suited for distance-based algorithms like K-Means, which are designed for dense, numerical data.\n3.  **Interpretability:** The resulting clusters are based on a transformed version of the data, making the centroids and the cluster logic difficult to interpret in terms of the original categorical features.\n\nThe workflow I want to enable is a seamless and native experience for clustering categorical and mixed data:\n*   **For fully categorical data:** A user should be able to call `KModes(n_clusters=5).fit(X_categorical)` directly, without any pre-processing.\n*   **For mixed data types:** A user should be able to call `KPrototypes(n_clusters=5, categorical=[0, 2]).fit(X_mixed)`, where they simply specify which columns are categorical. The algorithm would then automatically use an appropriate dissimilarity measure for each data type.\n\nThis integrates categorical clustering directly into the robust and familiar scikit-learn API, eliminating the need for external dependencies and inefficient pre-processing.\n\n### Describe your proposed solution\n\nI propose implementing the well-established K-Modes and K-Prototypes algorithms as new classes within the `sklearn.cluster` module. These algorithms are the canonical equivalents of K-Means for categorical and mixed data, respectively.\n\n**Proposed API Design (following scikit-learn conventions):**\n\n```python\nclass KModes(BaseEstimator, ClusterMixin):\n    \"\"\"\n    K-Modes clustering for categori...",
+      "labels": [
+        "New Feature",
+        "module:cluster",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-09-05T13:02:23Z",
+      "updated_at": "2025-09-12T11:51:30Z",
+      "comments": 9,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32115"
+    },
+    {
+      "number": 32112,
+      "title": "RFC Deprecate FeatureUnion and make_union",
+      "body": "Unless I'm missing something, to me `FeatureUnion` is just a `ColumnTransformer` where all transformers are applied to all features. So it's just a special case of `ColumnTransformer`.\n\n```py\nimport pandas as pd\nfrom sklearn.pipeline import FeatureUnion\nfrom sklearn.compose import ColumnTransformer\nfrom sklearn.preprocessing import StandardScaler\n\ndf = pd.DataFrame({\"a\": [1, 2, 3, 4], \"b\": [1, 2, 3, 4]})\n\nfu = FeatureUnion([(\"std_1\", StandardScaler()), (\"std_2\", StandardScaler())])\nfu.set_output(transform=\"pandas\")\nprint(fu.fit_transform(df))\n   std_1__a  std_1__b  std_2__a  std_2__b\n0 -1.341641 -1.341641 -1.341641 -1.341641\n1 -0.447214 -0.447214 -0.447214 -0.447214\n2  0.447214  0.447214  0.447214  0.447214\n3  1.341641  1.341641  1.341641  1.341641\n\nall_cols = slice(None)\nct = ColumnTransformer([(\"std_1\", StandardScaler(), all_cols), (\"std_2\", StandardScaler(), all_cols)])\nct.set_output(transform=\"pandas\")\nprint(ct.fit_transform(df))\n   std_1__a  std_1__b  std_2__a  std_2__b\n0 -1.341641 -1.341641 -1.341641 -1.341641\n1 -0.447214 -0.447214 -0.447214 -0.447214\n2  0.447214  0.447214  0.447214  0.447214\n3  1.341641  1.341641  1.341641  1.341641\n```\n\nIn addition, the parameters of `FeatureUnion` is a subset of the parameters of `ColumnTransformer`, so I don't see anything that one would be able to do with `FeatureUnion` but not with `ColumnTransformer`.\n\nFrom a maintenance view, it duplicates the burden because they share almost no code and it's common that they suffer from the same bugs and  fixes have to be repeated in both classes. And usually one or the other keeps the bug for a while because we only implement a fix for one and forget about the other. In general the forgotten one is `FeatureUnion` btw :) (e.g. the latest one https://github.com/scikit-learn/scikit-learn/issues/32104 for `FeatureUnion` that was detected and fixed a while ago for `ColumnTransformer` https://github.com/scikit-learn/scikit-learn/issues/28260)\n\nFinally, `FeatureUnion` has unresolved long st...",
+      "labels": [
+        "API",
+        "RFC",
+        "module:compose",
+        "module:pipeline"
+      ],
+      "state": "open",
+      "created_at": "2025-09-05T11:27:26Z",
+      "updated_at": "2025-09-08T14:43:07Z",
+      "comments": 14,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32112"
+    },
+    {
+      "number": 32110,
+      "title": "Optimize Performance of SGDOptimizer and AdamOptimizer with Vectorized Operations",
+      "body": "### Describe the workflow you want to enable\n\nI aim to enable a more efficient training workflow for Multilayer Perceptrons (MLPs) in scikit-learn by optimizing the performance of the `SGDOptimizer` and `AdamOptimizer` classes. Currently, these optimizers use list comprehensions in their `_get_updates` methods to compute parameter updates, which can be computationally expensive for large neural networks with many parameters (e.g., hidden layers with thousands of neurons). The proposed vectorized operations will allow users to train larger MLPs faster, particularly on datasets requiring extensive iterations, without altering the existing API or user experience. Additionally, the optimization will address redundant computations in `SGDOptimizer` when using Nesterov’s momentum, further improving training speed. This enhancement will benefit users working on deep learning tasks within scikit-learn, such as image classification or regression with complex models, by reducing training time and improving scalability.\n\n### Describe your proposed solution\n\nTo optimize the performance of `SGDOptimizer` and `AdamOptimizer`, I propose the following changes to `sklearn/neural_network/_stochastic_optimizers.py`:\n\n1. **Vectorized Operations**:\n   - Replace list comprehensions in `_get_updates` with in-place NumPy vectorized operations. This will leverage NumPy’s optimized C-based implementation, reducing Python loop overhead. For example, in `AdamOptimizer._get_updates`, the current list comprehension for updating first and second moments can be replaced with a single vectorized operation across all parameters.\n   - Example implementation for `AdamOptimizer._get_updates`:\n ```python\n\ndef _get_updates(self, grads: List[np.ndarray]) -> List[np.ndarray]:\n         self.t += 1\n         lr_t = self.learning_rate_init * np.sqrt(1 - self.beta_2**self.t) / (1 - self.beta_1**self.t)\n         for m, v, grad in zip(self.ms, self.vs, grads):\n             np.multiply(self.beta_1, m, out=m)\n     ...",
+      "labels": [
+        "Performance",
+        "Needs Benchmarks",
+        "module:neural_network"
+      ],
+      "state": "open",
+      "created_at": "2025-09-05T09:29:33Z",
+      "updated_at": "2025-09-05T18:44:23Z",
+      "comments": 8,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32110"
+    },
+    {
+      "number": 32109,
+      "title": "Add inner max_iter or a smart automatic setting to Lasso inside graphical lasso",
+      "body": "`GraphicalLasso` and `GraphicalLassoCV` expose `enet_tol`. They should also expose `enet_max_iter`.\nCurrently, the `max_iter` of the *outer iteration* is also used for this inner iteration. This is unfortunate, e.g., if you set a small number of outer iterations.\n\nPopped up in https://github.com/scikit-learn/scikit-learn/pull/31987#discussion_r2324154906.",
+      "labels": [
+        "Enhancement",
+        "API",
+        "Needs Decision",
+        "module:covariance",
+        "module:linear_model"
+      ],
+      "state": "open",
+      "created_at": "2025-09-05T07:00:22Z",
+      "updated_at": "2025-09-14T09:29:07Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32109"
+    },
+    {
+      "number": 32104,
+      "title": "FeatureUnion with polars output can error due to duplicate column names",
+      "body": "### Describe the bug\n\nFeatureUnion concatenates outputs of its transformers _before_ the `set_output` wrapper renames columns based on `get_feature_names_out` (adding the transformer name prefix). This works with pandas but not polars which does not allow creating a dataframe with duplicate feature names\n\nin addition to the reproducer below, `pytest sklearn/tests/test_pipeline.py::test_feature_union_set_output` fails if we replace \"pandas\" with \"polars\" in the test\n\n### Steps/Code to Reproduce\n\n```python\nimport polars as pl\nimport pandas as pd\nfrom sklearn.pipeline import FeatureUnion\nfrom sklearn.preprocessing import StandardScaler\n\ndf = pd.DataFrame({\"a\": [1, 2, 3, 4], \"b\": [1, 2, 3, 4]})\nfu = FeatureUnion([(\"std_1\", StandardScaler()), (\"std_2\", StandardScaler())])\nfu.set_output(transform=\"pandas\")\nfu.fit_transform(df) # OK\n\n# result:\n#\n#    std_1__a  std_1__b  std_2__a  std_2__b\n# 0 -1.341641 -1.341641 -1.341641 -1.341641\n# 1 -0.447214 -0.447214 -0.447214 -0.447214\n# 2  0.447214  0.447214  0.447214  0.447214\n# 3  1.341641  1.341641  1.341641  1.341641\n\ndf = pl.from_pandas(df)\nfu.set_output(transform=\"polars\")\nfu.fit_transform(df) # ERROR during hstack step as both transformers have output column names ['a', 'b']\n\n# error:\n# Traceback (most recent call last):\n#     ...\n# polars.exceptions.DuplicateError: column with name 'a' has more than one occurrence\n```\n\n### Expected Results\n\ndataframe with column names `std_1__a  std_1__b  std_2__a  std_2__b`\n\n### Actual Results\n```\nTraceback (most recent call last):\n  File \".../feature_union.py\", line 26, in <module>\n    fu.fit_transform(df) # ERROR during hstack step as both transformers have output column names ['a', 'b']\n    ~~~~~~~~~~~~~~~~^^^^\n  File \".../scikit-learn/sklearn/utils/_set_output.py\", line 316, in wrapped\n    data_to_wrap = f(self, X, *args, **kwargs)\n  File \".../scikit-learn/sklearn/pipeline.py\", line 1970, in fit_transform\n    return self._hstack(Xs)\n           ~~~~~~~~~~~~^^^^\n  File \".../scikit-learn/s...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-09-04T10:09:30Z",
+      "updated_at": "2025-09-07T14:10:20Z",
+      "comments": 5,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32104"
+    },
+    {
+      "number": 32099,
+      "title": "DecisionTreeRegressor with absolute error criterion: non-optimal split",
+      "body": "### Describe the bug\n\nWhile working on fixing the issue https://github.com/scikit-learn/scikit-learn/issues/9626, I noticed that in some cases, the current implementation of `DecisionTreeRegressor(criterion=\"absolute_error\")` doesn't not find the optimal split in some cases, when sample weights are given.\n\nIt seems to only happen with a small number of points, and the chosen split is not too far from the optimal split.\n\nMy PR for https://github.com/scikit-learn/scikit-learn/issues/9626 will fix this one too. I'm openning this issue only to document the current behavior.\n\n### Steps/Code to Reproduce\n\n```python\nimport numpy as np\nfrom sklearn.tree import DecisionTreeRegressor\n\ndef abs_error_of_a_leaf(y, w):\n    return min((np.abs(y - yi) * w).sum() for yi in y)\n\ndef abs_error_of_leaves(leaves, y, w):\n    return sum(abs_error_of_a_leaf(y[leaves == i], w[leaves == i]) for i in np.unique(leaves))\n\nX = np.array([[1], [2], [3], [4], [5]])\ny = np.array([1, 1, 3, 1, 2])\nw = np.array([3., 3., 2., 1., 2.])\n\nreg = DecisionTreeRegressor(max_depth=1, criterion='absolute_error')\nsk_leaves = reg.fit(X, y, sample_weight=w).apply(X)\nprint(\"leaves:\", sk_leaves, \"total abs error:\", abs_error_of_leaves(sk_leaves, y, w))\n# prints [1 1 1 1 2] and 4.0\n# If you look at the values of X, y, w, it's easy enough to doubt this split is the best\n\nexpected_leaves = np.array([1, 1, 2, 2, 2])\nprint(\"total abs error:\", abs_error_of_leaves(expected_leaves, y, w))\n# prints 3.0 => indeed, the split returned by sklearn is not the best\n```\n\n### Expected Results\n\nChooses a split that minimizes the AE.\n\n### Actual Results\n\nPrints:\n```\nleaves: [1 1 1 1 2] total abs error: 4.0\ntotal abs error: 3.0\n```\n\nShowing the chosen split is not optimal.\n\n### Versions\n\n```shell\nSystem:\n    python: 3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]\nexecutable: /home/arthur/dev-perso/fast-mae-split/.venv/bin/python\n   machine: Linux-6.14.0-29-generic-x86_64-with-glibc2.39\n\nPython dependencies:\n      sklearn: 1.7.1\n     ...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-09-03T17:48:02Z",
+      "updated_at": "2025-09-08T14:38:40Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32099"
+    },
+    {
+      "number": 32095,
+      "title": "Using `fetch_20newsgroups` with multiple pytest workers leads to race",
+      "body": "### Describe the bug\n\nWhen using `pytest-xdist` with several workers to run a test suite that uses `fetch_20newsgroups` as a fixture (`scope=\"session\") the dataset shape is sometimes wrong. For example I just had a run where `X.shape=(5902, 68435) y.shape=(5902,)` - it should be something like ~11000 samples for the \"train\" subset.\n\nSome test functions will see the \"shorter\" dataset and some the full dataset.\n\nI think the problem is caused by using `pytest-xdist` where each worker will download the dataset itself. The download itself will work in parallel (though wasteful) but then when the file gets `shutil.move`d to the final location things get broken? Or one of the workers sees a partial file somehow.\n\nThis is the relevant code\n\nhttps://github.com/scikit-learn/scikit-learn/blob/be9dd4d4c1f03b8d27311f2d43fcb3c88bdea55c/sklearn/datasets/_base.py#L1499\n\nI'm wondering if the fix is to not use `NamedTempFile` to create the filename to download to, but instead use a name like `fname + '.part'` and check if that file exists before starting a download. That way only one process would start downloading the file.\n\nThe problem is that we would need a `check_or_create(path)` function that will perform the check and creation of a path in an atomic operation. Not sure that exists :-/\n\n### Steps/Code to Reproduce\n\nIf you put this snippet into a file and run it with `python your_file.py <n_procs>` it reproduces a different version (I think) of the problem.\n\n```python\nimport multiprocessing as mp\nimport random\nimport sys\nimport time\n\nfrom sklearn.datasets import fetch_20newsgroups\n\n\ndef fetch_data(i):\n    time.sleep(random.random())\n    data = fetch_20newsgroups(subset=\"train\", shuffle=True, random_state=42)\n    return (i, len(data.data))\n\nif __name__ == \"__main__\":\n    n_processes = int(sys.argv[1])\n\n    with mp.Pool(processes=n_processes) as pool:\n        results = pool.map(fetch_data, range(n_processes))\n    print(results)\n```\n\nMake sure to delete the 20newsgroups file(s) fro...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-09-03T14:02:07Z",
+      "updated_at": "2025-09-04T14:56:32Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32095"
+    },
+    {
+      "number": 32090,
+      "title": "Unpickling ColumnTransformer fitted in 1.6.1 fails in 1.7.1 with AttributeError: _RemainderColsList",
+      "body": "### Describe the bug\n\n**Summary** \n\nA `ColumnTransformer` pickled with **scikit-learn 1.6.1** cannot be unpickled with **1.7.1** (and other versions > 1.6.1). The unpickling fails before any method call with:\n\n```bash\nAttributeError: Can't get attribute '_RemainderColsList' on <module 'sklearn.compose._column_transformer' from '.../site-packages/sklearn/compose/_column_transformer.py'>\n```\n\nThis makes it impossible to load persisted pipelines across these versions when ColumnTransformer was used.\n\n### Steps/Code to Reproduce\n\n## Run it with scikit-learn==1.6.1\n```\nimport pickle\nimport pandas as pd\nfrom sklearn.compose import ColumnTransformer\nfrom sklearn.preprocessing import OneHotEncoder, StandardScaler\n\n# Minimal toy data\ndf = pd.DataFrame({\"num\": [1.0, 2.0, 3.5], \"cat\": [\"a\", \"b\", \"a\"]})\n\n# Minimal ColumnTransformer\nct = ColumnTransformer(\n    transformers=[\n        (\"num\", StandardScaler(), [\"num\"]),\n        (\"cat\", OneHotEncoder(handle_unknown=\"ignore\", sparse_output=False), [\"cat\"]),\n    ], remainder=\"passthrough\"\n)\n\n# Fit and pickle\nct.fit(df)\nwith open(\"column_transformer.pkl\", \"wb\") as f:\n    pickle.dump(ct, f)\n\n```\n## Run with scikit-learn > 1.6.1\n```\nimport pickle\nimport pandas as pd\n\n# Unpickle the fitted transformer\nwith open(\"column_transformer.pkl\", \"rb\") as f:\n    ct = pickle.load(f)\n\n# Use on small test data (includes an unseen category \"c\")\ndf2 = pd.DataFrame({\"num\": [0.0, 1.0], \"cat\": [\"a\", \"c\"]})\nX = ct.transform(df2)\n\n```\n\n### Expected Results\n\nA ColumnTransformer fitted and persisted in 1.6.1 can be loaded in 1.7.1 and used normally (e.g., transform), or—if cross-version unpickling is intentionally unsupported—clear guidance in release notes and/or a compatibility shim to avoid a hard failure on import.\n\n### Actual Results\n\nUnpickling fails immediately with AttributeError (below), seemingly because a private helper `_RemainderColsList` referenced in the pickle no longer exists / was moved in `sklearn.compose._column_transformer` in 1.7.x.\n\n`At...",
+      "labels": [
+        "Bug",
+        "Documentation"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-03T09:33:57Z",
+      "updated_at": "2025-09-11T16:18:05Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32090"
+    },
+    {
+      "number": 32087,
+      "title": "⚠️ CI failed on Linux_free_threaded.pylatest_free_threaded (last failure: Sep 14, 2025) ⚠️",
+      "body": "**CI is still failing on [Linux_free_threaded.pylatest_free_threaded](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=79978&view=logs&j=c10228e9-6cf7-5c29-593f-d74f893ca1bd)** (Sep 14, 2025)\n- test_multi_metric_search_forwards_metadata[GridSearchCV-param_grid]",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-09-03T03:00:07Z",
+      "updated_at": "2025-09-14T02:56:10Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32087"
+    },
+    {
+      "number": 32086,
+      "title": "⚠️ CI failed on Linux_Runs.pylatest_conda_forge_mkl (last failure: Sep 03, 2025) ⚠️",
+      "body": "**CI failed on [Linux_Runs.pylatest_conda_forge_mkl](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=79590&view=logs&j=dde5042c-7464-5d47-9507-31bdd2ee0a3a)** (Sep 03, 2025)\n- Test Collection Failure",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-03T02:34:09Z",
+      "updated_at": "2025-09-03T08:24:44Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32086"
+    },
+    {
+      "number": 32083,
+      "title": "1.1.8 LARS Lasso at Mathematical Formulation",
+      "body": "### Describe the issue linked to the documentation\n\nInstead of giving a vector result, the LARS solution consists of a curve denoting the solution for each value of the l1 norm of the parameter vector.\n\n* not a curve\n* \"curve\" is not computed at every point\n* infinitely many solutions of the l1 norm of the parameter vector\n\n### Suggest a potential alternative/fix\n\nInstead of returning one vector of parameters, the LARS solution returns the 2D array coef_path_ of shape (n_features, max_features + 1). The values within the 2D array are the parameters of the model at each critical point on the path drawn by the l1 norm as the alpha parameter is decreased. The first column is always zero.\n\nMight not be the clearest either tbh, you guys can probably come up with something much nicer.",
+      "labels": [
+        "Documentation"
+      ],
+      "state": "open",
+      "created_at": "2025-09-03T01:02:18Z",
+      "updated_at": "2025-09-09T01:37:51Z",
+      "comments": 5,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32083"
+    },
+    {
+      "number": 32076,
+      "title": "```TargetEncoder``` should take ```groups``` as an argument",
+      "body": "### Describe the workflow you want to enable\n\nThe current implementation of TargetEncoder uses ```KFold```-cross-validation to avoid data leakage. In cases of longitudinal or clustered data, it is desirable to ensure that rows belonging to the same group or cluster belong to the same train-folds to avoid data-leakage.\n\n### Describe your proposed solution\n\n This could be achieved by introducing an optional```group``` parameter and the use of ```GroupKFold```-cross-validation if the ```group``` is not ```None```.\n\n### Describe alternatives you've considered, if relevant\n\nThe alternative is to continue ignoring group structure. \n\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "Enhancement",
+        "help wanted"
+      ],
+      "state": "open",
+      "created_at": "2025-09-02T09:59:39Z",
+      "updated_at": "2025-09-11T16:00:53Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32076"
+    },
+    {
+      "number": 32075,
+      "title": "RFC new fitted attributes for LogisticRegressionCV",
+      "body": "Contributes to #11865.\n\n### Fitted Attributes\nAfter the removal of `multi_class` and any OvR-logic in `LogisticRegressionCV` in #32073, there are a few fitted attributes that have now (or always had) a strange data format (I neglect l1_ratios in the following for ease of reading):\n- `coefs_paths_` is a dictionary with class labels as keys and arrays of shape (n_folds, n_cs, n_features) or similar as values.\n  As `coef_` is an array of shape (n_classes, n_features), `coefs_paths_` should be an array of shape (n_folds, n_cs, n_classes, n_features), such that `coefs_paths_[idx_fold, idx_cs, :, :]` gives comparable coefficients. Maybe the intercept should be separated as `intercepts_paths_`.\n- `scores_` is a dictionary with class labels as keys and arrays of shape (n_folds, n_cs) or similar as values. All values are the same regardless of the key (class label). This is a relict from OvR.\n  A good value would be just an array of shape (n_folds, n_cs)\n- `C_` is an array of shape (n_classes)\n  As the different penalties for classes are gone with the removal of OvR, `C_` should be a single float: the single best penalty parameter.\n- `l1_ratio_` same as `C_`\n- `n_iter_` is an array of shape (1, n_folds, n_cs) or similar\n  The first dimension should be removed, i.e. shape (n_folds, n_cs)\n\n### Deprecation strategy\nIt is unclear to me how to accomplish the above. Options:\n1. Deprecate old attributes and introduce new ones with new names. (time = 2 releases)\n2. Same as 1. but then deprecate new ones and reintroduce the old names. (time = 4 releases)\n3. Deprecate old attributes and switch behavior in after the deprecation cycle (time = 2 releases)\n4. Another option?\n\nUsually, we avoided deprecations options like 3.\n@scikit-learn/core-devs recall for comments",
+      "labels": [
+        "RFC"
+      ],
+      "state": "open",
+      "created_at": "2025-09-02T07:42:23Z",
+      "updated_at": "2025-09-05T12:15:05Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32075"
+    },
+    {
+      "number": 32072,
+      "title": "LogisticRegressionCV intercept is wrong",
+      "body": "### Describe the bug\n\nThe intercept calculated by `LogisticRegressionCV` is wrong.\nA bit related to #11865.\n\n### Steps/Code to Reproduce\n\n```python\nimport numpy as np\nfrom sklearn.datasets import load_iris\nfrom sklearn.linear_model import LogisticRegression, LogisticRegressionCV\nfrom sklearn.model_selection import StratifiedKFold\n\niris = load_iris()\nX, y = iris.data, iris.target\nlrcv = LogisticRegressionCV(solver=\"newton-cholesky\").fit(X, y)\n\n# exact same split as default LogisticRegressionCV\ncv = StratifiedKFold(5)\nfolds = list(cv.split(X, y))\n\n# First fold (index 0) and second C (index 1)\ntrain_fold_0 = folds[0][0]\nlr = LogisticRegression(\n    solver=\"newton-cholesky\", C=lrcv.Cs_[1]\n).fit(X[train_fold_0], y[train_fold_0])\n\n# Compare coefficients without intercept for class 0\nnp.testing.assert_allclose(lrcv.coefs_paths_[0][0, 1, :-1], lr.coef_[0], rtol=1e-5)\n\n# Now the intercept of class 0\nnp.testing.assert_allclose(lrcv.coefs_paths_[0][0, 1, -1], lr.intercept_[0], rtol=1e-5)\n```\n\nIt is also not related to the freedom to add a constant to coefficients: Probabilities are invariant under shifting all coefficients of a single feature j for all classes by the same amount c:\n`coef[k, :] -> coef[k, :] + c    =>    proba stays the same`\nSee\n```python\n# Intercept for all classes\nlr.intercept_\n# array([ 0.35141429, -0.02662967, -0.32478462])\n\n[lrcv.coefs_paths_[cla][0, 1, -1] for cla in range(3)]\n# [0.33603135678054513, -0.04201515149357693, -0.2940162052869682]\n# These are not related by a single constant.\n```\n\n### Expected Results\n\nThe `LogisticRegression` should reproduce the same result as the selected on from `LogisticRegressionCV`.\n\n### Actual Results\n\nAssertionError: \nNot equal to tolerance rtol=1e-05, atol=0\n\nMismatched elements: 1 / 1 (100%)\nMax absolute difference among violations: 0.01538293\nMax relative difference among violations: 0.04377435\n ACTUAL: array(0.336031)\n DESIRED: array(0.351414)\n\n\n### Versions\n\n```shell\nSystem:\n    python: 3.12.9 (main, Feb  4 2025...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-01T14:09:05Z",
+      "updated_at": "2025-09-02T13:37:33Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32072"
+    },
+    {
+      "number": 32067,
+      "title": "Enhance the warning message for metadata default value change",
+      "body": "### Describe the workflow you want to enable\n\nCurrently the warning raised for [Deprecation / Default Value Change](https://scikit-learn.org/stable/auto_examples/miscellaneous/plot_metadata_routing.html#deprecation-default-value-change)\nis quite generic\n```\nSupport for sample_weight has recently been added to this class. To maintain backward compatibility, ...\n```\n\nWould it be possible to specify the class in question ?  Something like\n```\nSupport for sample_weight has recently been added to ExampleRegressor. To maintain backward compatibility, ...\n```\n\n### Describe your proposed solution\n\nI think we can get the class through the owner attribute of the MethodMetadataRequest which raises the warning.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-09-01T09:03:14Z",
+      "updated_at": "2025-09-01T12:17:29Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32067"
+    },
+    {
+      "number": 32062,
+      "title": "Regressor Prediction Makes a Negative Y Offset",
+      "body": "### Describe the bug\n\nHi, I've found a strange situation where regressor prediction makes a negative Y offset. See an orange line on my picture below.\nHere is my py file and json data:\n[test_scikit.zip](https://github.com/user-attachments/files/22069020/test_scikit.zip)\n\nYou will need to change JS_PATH  to your path:\nJS_PATH = \"D:/Projects/Crpt/CryptoMaiden/Bot/Base/Test/btc_data.json\"\n\nYou will also need to install a poltly lib.\n\n<img width=\"1625\" height=\"921\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/e8ac2c73-c556-4570-be28-6bfaedd7ba82\" />\n\nI'm new to the Scikit so I decided to report the issue.\n\nI tried RandomForestRegressor, AdaBoostRegressor, GradientBoostingRegressor, HistGradientBoostingRegressor and all of them have this issue. \nTo change a regressor in my code you can just comment/uncomment it on lines 89-95.\n\n### Steps/Code to Reproduce\n\n# See my attached ZIP file!\n\n### Expected Results\n\nNo negative Y offset.\n\n### Actual Results\n\nJust run my py file!\n\n### Versions\n\n```shell\n1.7.1\n```",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-08-31T22:44:45Z",
+      "updated_at": "2025-09-03T11:33:26Z",
+      "comments": 5,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32062"
+    },
+    {
+      "number": 32049,
+      "title": "The dcg_score and ndcg_score documentation are hard to understand",
+      "body": "### Describe the issue linked to the documentation\n\nThe documentation for the `dcg_score` and `ndcg_score` leave much to be desired.\n\nI believe this is also a by-product of competing definitions of the discount cumulative gains (DCG) and normalised DCG (nDCG) in literature. Namely\n\n$$\\mathrm{DCG_{p}} = \\sum_{i=1}^{p} \\frac{rel_{i}}{\\log_{2}(i+1)}$$\n\nand\n\n$$\\mathrm{DCG_{p}} = \\sum_{i=1}^{p} \\frac{ 2^{rel_{i}} - 1 }{ \\log_{2}(i+1)}.$$\n\n\nThe `dcg_score` uses the former definition, I do not think this is very clear.\n\nThe description for the DCG score (`dcg_score`) says \"Sum the true scores ranked in the order induced by the predicted scores, after applying a logarithmic discount\". While this is technically correct to what `dcg_score` does, like many maths equations, it is hard to understand without using maths notation.\n\nIf a user wants to clarify the exact equation of the DCG used past the description they might go to the references, however,\n\n- the first reference is the Wikipedia which offers both definitions;\n\n- the third reference, \"Wang, Y., Wang, L., Li, Y., He, D., Chen, W., & Liu, T. Y. (2013, May). A theoretical analysis of NDCG ranking measures. In Proceedings of the 26th Annual Conference on Learning Theory (COLT 2013)\", defines the discount function an a much more general way. While interesting does not give the user any insight into how the `dcg_score` is actually implemented.\n\nMy criticism of the `ndcg_score` is the same.\n\n### Suggest a potential alternative/fix\n\nI would propose giving an explicit definition of the DCG along the lines of\n\n$$\\mathrm{DCG_{k}} = \\sum_{i=1}^{k} \\frac{rel_{i}}{\\log_{2}(i+1)}$$\n\nwhere each $rel_i$ is the true score ranked in the order induced by the predicted scores.\n\nAlso, to do something similar for the `ndcg_score`.",
+      "labels": [
+        "Documentation",
+        "Needs Triage"
+      ],
+      "state": "open",
+      "created_at": "2025-08-29T15:25:55Z",
+      "updated_at": "2025-08-30T04:33:59Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32049"
+    },
+    {
+      "number": 32048,
+      "title": "Leiden Clustering",
+      "body": "### Describe the workflow you want to enable\n\nThe \"Leiden\" Clustering algorithm is considered one of the most powerful clustering algorithms, often outperforming competitors by a wide margin. \nThe algorithm fulfils the inclusion criteria: its now 6 years old, has some 5200 citations. \n\nCurrently, it is implemented in scanpy and cugraph where the latter includes a fast, gpu-enabled implementation. Due to its empirical performance, inclusion in scikit-learn would be a welcome addition for practitioners as it is vastly superior to most clustering algorithms currently included in scikit learn (on non-trivial datasets).\n\n### Describe your proposed solution\n\nI propose to include the Leiden algorithm as a clustering algorithm in scikit-learn.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n[From Louvain to Leiden: guaranteeing well-connected communities](https://www.nature.com/articles/s41598-019-41695-z)",
+      "labels": [
+        "New Feature",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-08-29T13:04:59Z",
+      "updated_at": "2025-09-09T15:36:50Z",
+      "comments": 5,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32048"
+    },
+    {
+      "number": 32046,
+      "title": "rendering of 'routing' note in the documentation",
+      "body": "### Describe the issue linked to the documentation\n\nthe rendering of this section seems to be over-indented leading to some funky rendering in html:\n\nexample:\n\nhttps://scikit-learn.org/stable/modules/generated/sklearn.cross_decomposition.CCA.html#sklearn.cross_decomposition.CCA.set_transform_request\n\n<img width=\"1174\" height=\"683\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/740398db-819e-4df4-aa67-b274aa75412f\" />\n\nsource code:\n\nhttps://github.com/scikit-learn/scikit-learn/blob/2e4e40babb3ab86d2ed2185bc0dba7fdba9414f1/sklearn/utils/_metadata_requests.py#L1215\n\n### Suggest a potential alternative/fix\n\nremove one level of indent source code:\n\nhttps://github.com/scikit-learn/scikit-learn/blob/2e4e40babb3ab86d2ed2185bc0dba7fdba9414f1/sklearn/utils/_metadata_requests.py#L1215",
+      "labels": [
+        "Documentation",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-29T10:31:51Z",
+      "updated_at": "2025-09-02T10:15:52Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32046"
+    },
+    {
+      "number": 32045,
+      "title": "make sphinx directive about version more sklearn specific",
+      "body": "### Describe the issue linked to the documentation\n\nThis is minor issue mostly affecting the rendering of the documentation of downstream libraries.\n\nFor example in Nilearn we use the TransformerMixin in quite a few of our estimators.\n\nBut when viewing the doc of our estimators, the sklearn methods of that mixin may have things like 'Added in version 1.3'\n\nhttps://nilearn.github.io/stable/modules/generated/nilearn.maskers.SurfaceLabelsMasker.html#nilearn.maskers.SurfaceLabelsMasker.set_transform_request\n\n<img width=\"1209\" height=\"574\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/38c33e22-6cef-4cc3-9656-3255cd9f029a\" />\n\nHowever Nilearn does not have a version 1.3 so this kind of look confusing.\n\n### Suggest a potential alternative/fix\n\nI am wondering if it would be possible to mention 'scikit-learn' in the sphinx directives that are about version (added, deprecated...)",
+      "labels": [
+        "Bug",
+        "Documentation"
+      ],
+      "state": "open",
+      "created_at": "2025-08-29T10:20:34Z",
+      "updated_at": "2025-09-02T13:52:49Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32045"
+    },
+    {
+      "number": 32044,
+      "title": "PyTorch tensor failed with SVM",
+      "body": "### Describe the bug\n\nPyTorch tensor failed with SVM: `TypeError: asarray(): argument 'dtype' must be torch.dtype, not type`\n\n### Steps/Code to Reproduce\n\n```python\nimport torch\nfrom sklearn import config_context\nfrom sklearn.svm import SVC\nfrom sklearn.datasets import make_classification\nfrom sklearn.metrics import accuracy_score\n\nX_torch = torch.randn(100, 4, dtype=torch.float32)\ny_torch = torch.randint(0, 2, (100,), dtype=torch.int32)\n\nprint(f\"输入数据形状: {X_torch.shape}\")\nprint(f\"标签数据形状: {y_torch.shape}\")\nprint(f\"输入数据类型: {X_torch.dtype}\")\nprint(f\"标签数据类型: {y_torch.dtype}\")\n\nwith config_context(array_api_dispatch=True):\n    svm = SVC(kernel='linear', random_state=42)\n    svm.fit(X_torch, y_torch)\n    \n\n    y_pred = svm.predict(X_torch)\n    \n    accuracy = accuracy_score(y_torch.cpu().numpy(), y_pred)\n    print(f\"SVM 准确率: {accuracy:.4f}\")\n    \n    print(f\"支持向量数量: {len(svm.support_vectors_)}\")\n    print(f\"模型参数形状: {svm.coef_.shape if hasattr(svm, 'coef_') else 'No coefficients'}\")\n```\n\n### Expected Results\n\nNo error is thrown.\n\n### Actual Results\n\n```\n输入数据形状: torch.Size([100, 4])\n标签数据形状: torch.Size([100])\n输入数据类型: torch.float32\n标签数据类型: torch.int32\nTraceback (most recent call last):\n  File \"/mnt/workspace/scikit-learn/bug.py\", line 19, in <module>\n    svm.fit(X_torch, y_torch)\n  File \"/mnt/workspace/scikit-learn/sklearn/base.py\", line 1373, in wrapper\n    return fit_method(estimator, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/workspace/scikit-learn/sklearn/svm/_base.py\", line 205, in fit\n    X, y = validate_data(\n           ^^^^^^^^^^^^^^\n  File \"/mnt/workspace/scikit-learn/sklearn/utils/validation.py\", line 3024, in validate_data\n    X, y = check_X_y(X, y, **check_params)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/mnt/workspace/scikit-learn/sklearn/utils/validation.py\", line 1383, in check_X_y\n    X = check_array(\n        ^^^^^^^^^^^^\n  File \"/mnt/workspace/scikit-learn/sklearn/utils/validation.py\", line 1068, in check_array\n ...",
+      "labels": [
+        "module:svm",
+        "Array API"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-29T01:21:01Z",
+      "updated_at": "2025-08-29T03:41:00Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32044"
+    },
+    {
+      "number": 32043,
+      "title": "Failed to build scikit learn with cython.",
+      "body": "### Describe the bug\n\nI run the command in https://scikit-learn.org/stable/developers/advanced_installation.html , but it built failed: \n\n```\nroot@dsw-1307236-5f5f447cdf-xs4m5:/mnt/workspace/scikit-learn# pip install --editable .    --verbose --no-build-isolation    --config-settings editable-verbose=true\nUsing pip 25.2 from /usr/local/lib/python3.11/site-packages/pip (python 3.11)\nLooking in indexes: https://mirrors.cloud.aliyuncs.com/pypi/simple\nObtaining file:///mnt/workspace/scikit-learn\n  Checking if build backend supports build_editable ...   Running command Checking if build backend supports build_editable\ndone\n  Preparing editable metadata (pyproject.toml) ...   Running command Preparing editable metadata (pyproject.toml)\n  + meson setup --reconfigure /mnt/workspace/scikit-learn /mnt/workspace/scikit-learn/build/cp311 -Dbuildtype=release -Db_ndebug=if-release -Db_vscrt=md --native-file=/mnt/workspace/scikit-learn/build/cp311/meson-python-native-file.ini\n  The Meson build system\n  Version: 1.9.0\n  Source dir: /mnt/workspace/scikit-learn\n  Build dir: /mnt/workspace/scikit-learn/build/cp311\n  Build type: native build\n  Project name: scikit-learn\n  Project version: 1.8.dev0\n  C compiler for the host machine: cc (gcc 11.4.0 \"cc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0\")\n  C linker for the host machine: cc ld.bfd 2.38\n  C++ compiler for the host machine: c++ (gcc 11.4.0 \"c++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0\")\n  C++ linker for the host machine: c++ ld.bfd 2.38\n  Cython compiler for the host machine: cython (cython 3.1.3)\n  Host machine cpu family: x86_64\n  Host machine cpu: x86_64\n  Compiler for C supports arguments -Wno-unused-but-set-variable: YES (cached)\n  Compiler for C supports arguments -Wno-unused-function: YES (cached)\n  Compiler for C supports arguments -Wno-conversion: YES (cached)\n  Compiler for C supports arguments -Wno-misleading-indentation: YES (cached)\n  Library m found: YES\n  Program sklearn/_build_utils/tempita.py found: YES (/usr/local/bin/pyt...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-29T00:59:49Z",
+      "updated_at": "2025-08-29T01:04:25Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32043"
+    },
+    {
+      "number": 32036,
+      "title": "Classification metrics don't seem to support sparse?",
+      "body": "While working on #31829, I noticed that although most metrics in `_classification.py` say they support sparse in the docstring (and include \"sparse matrix\" in `validate_params`), when you actually try, you get an error.\n\nEssentially in `_check_targets`, we do:\n\nhttps://github.com/scikit-learn/scikit-learn/blob/726ed184ed80b0191732baaaf5825b86b41db4d2/sklearn/metrics/_classification.py#L128-L131\n\n`column_or_1d` then calls `check_array` with `accept_sparse` set to the default `False`.\n\n```python\nfrom sklearn.metrics import accuracy_score\nfrom scipy import sparse\nimport numpy as np\n\ny = [0, 2, 1, 3]\ny_sparse = sparse.csr_matrix(np.array(y).reshape(-1, 1))\n\naccuracy_score(y_sparse, y_sparse)\n```\n\nGives the following error:\n\n<details open>\n<summary>Error</summary>\n\n```\nTypeError                                 Traceback (most recent call last)\nCell In[11], line 1\n----> 1 accuracy_score(sparse_col, sparse_col)\n\nFile ~/Documents/dev/scikit-learn/sklearn/utils/_param_validation.py:218, in validate_params.<locals>.decorator.<locals>.wrapper(*args, **kwargs)\n    212 try:\n    213     with config_context(\n    214         skip_parameter_validation=(\n    215             prefer_skip_nested_validation or global_skip_validation\n    216         )\n    217     ):\n--> 218         return func(*args, **kwargs)\n    219 except InvalidParameterError as e:\n    220     # When the function is just a wrapper around an estimator, we allow\n    221     # the function to delegate validation to the estimator, but we replace\n    222     # the name of the estimator by the name of the function in the error\n    223     # message to avoid confusion.\n    224     msg = re.sub(\n    225         r\"parameter of \\w+ must be\",\n    226         f\"parameter of {func.__qualname__} must be\",\n    227         str(e),\n    228     )\n\nFile ~/Documents/dev/scikit-learn/sklearn/metrics/_classification.py:373, in accuracy_score(y_true, y_pred, normalize, sample_weight)\n    371 # Compute accuracy for each possible representati...",
+      "labels": [
+        "Bug",
+        "Documentation"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-28T11:02:13Z",
+      "updated_at": "2025-09-09T12:02:25Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32036"
+    },
+    {
+      "number": 32032,
+      "title": "Setting weights on items when passing list of dicts to RandomizedSearchCV",
+      "body": "### Describe the workflow you want to enable\n\nWe can pass a list of dictionaries to `RandomizedSearchCV`, for example\n\n```python\n[\n    {\"dim_reduction\": \"passthrough\"},\n    {\n        \"dim_reduction\": PCA(),\n        \"dim_reduction__n_components\": [10, 20, ...,]\n    }\n]\n```\n\nIf I understand correctly [here](https://github.com/scikit-learn/scikit-learn/blob/main/sklearn/model_selection/_search.py#L335) to get a set of hyperparameters one of the items in the list is chosen with equal probabilities, then a set of parameters is sampled from that dict.\n\nIn some cases it would be convenient to control the probability of choosing each list item. For example above I might want to invest more computation time in the \"not passthrough\" branch. Or if I have a column that can be either dropped or transformed I may want to explore more the \"not drop\" branch.\n\nIn other cases we have to create multiple list items due to nested estimators but that results in one choice for a hyperparameter to be over-represented. For example:\n\n```python\n[\n    {\n        \"transformer\": Flat(),\n        \"transformer__a\": uniform(0.0, 1.0),\n        \"transformer__b\": uniform(0.0, 1.0),\n    },\n    {\n        \"transformer\": Nested(),\n        \"transformer__part\": A(),\n        \"transformer__part__a\": uniform(0.0, 1.0),\n    },\n    {\n        \"transformer\": Nested(),\n        \"transformer__part\": B(),\n        \"transformer__part__b\": uniform(0.0, 1.0),\n    },\n]\n```\n\nI have to create 2 grid items for the Nested() option but if I am equally interested in the Flat() one I might want to set weights [1.0, 0.5, 0.5] on the list of param dicts. Maybe this is not a great example but what I mean is the amount of trials spent on one option can be driven by the structure of the estimators and how they are combined and sometimes it would be helpful to be able to correct or control it.\n\n\n### Describe your proposed solution\n\nNot sure what could be a nice API, maybe there would be a `distribution_weights` parameter which can only b...",
+      "labels": [
+        "New Feature",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-08-27T18:06:56Z",
+      "updated_at": "2025-09-02T19:22:57Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32032"
+    },
+    {
+      "number": 32022,
+      "title": "⚠️ CI failed on Linux_Nightly.pylatest_pip_scipy_dev (last failure: Aug 28, 2025) ⚠️",
+      "body": "**CI is still failing on [Linux_Nightly.pylatest_pip_scipy_dev](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=79396&view=logs&j=dfe99b15-50db-5d7b-b1e9-4105c42527cf)** (Aug 28, 2025)\nUnable to find junit file. Please see link for details.",
+      "labels": [
+        "Bug"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-27T02:35:55Z",
+      "updated_at": "2025-08-29T03:33:03Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32022"
+    },
+    {
+      "number": 32003,
+      "title": "`OrdinalEncoder` transformed validation dataset still contains null / missing values",
+      "body": "### Describe the bug\n\nI use `OrdinalEncoder` to `fit_trainsform` a training dataset which is properly cleaned up. However, using the same encoder to `transform` validation / test dataset still contains null / missing values.\n\n### Steps/Code to Reproduce\n\n```\nordinal_encoder = OrdinalEncoder(categories=\"auto\",\n                                 handle_unknown=\"use_encoded_value\",\n                                 unknown_value=numpy.nan,\n                                 encoded_missing_value=numpy.nan) # treat unknown categories as np.nan (or None)\nX_train[categorical_features] = ordinal_encoder.fit_transform(X_train[categorical_features].astype(str)) # OrdinalEncoder expects all values as the same type (e.g. string or numeric only)\nX_validation[categorical_features] = ordinal_encoder.transform(X_validation[categorical_features].astype(str)) # only use `transform` on the validation data\n```\nThe following pass:\n```\nassert not X_train[categorical_features].isnull().values.any()\nassert not X_train[categorical_features].isna().values.any()\n```\nThe following fails!:\n```\nassert not X_validation[categorical_features].isnull().values.any()\nassert not X_validation[categorical_features].isna().values.any()\n```\n\n\n### Expected Results\n\n`transform` on validation dataset should clean up the values, leaving no missing and/or null values.\n\n### Actual Results\n\nThe assertion code on validation dataset fails!\n\n### Versions\n\n```shell\nSystem:\n    python: 3.13.3 (main, Aug 14 2025, 11:53:40) [GCC 14.2.0]\nexecutable: /home/khteh/.local/share/virtualenvs/JupyterNotebooks-uVG1pv5y/bin/python\n   machine: Linux-6.14.0-28-generic-x86_64-with-glibc2.41\n\nPython dependencies:\n      sklearn: 1.7.1\n          pip: 25.0\n   setuptools: 80.9.0\n        numpy: 2.3.2\n        scipy: 1.16.1\n       Cython: None\n       pandas: 2.3.1\n   matplotlib: 3.10.5\n       joblib: 1.5.1\nthreadpoolctl: 3.6.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: blas\n   internal_api: openblas\n    num_threads: 16\n     ...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-24T10:58:47Z",
+      "updated_at": "2025-08-24T11:23:28Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/32003"
+    },
+    {
+      "number": 31990,
+      "title": ".",
+      "body": "",
+      "labels": [
+        "Documentation",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-22T10:01:19Z",
+      "updated_at": "2025-08-22T10:57:40Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31990"
+    },
+    {
+      "number": 31989,
+      "title": "Implementing Divisive Analysis",
+      "body": "### Describe the workflow you want to enable\n\nI want to add Divisive Analysis Clustering to base scikit-learn in order to provide more options to developers.\n\"Divisive methods start when all objects are together (that is, at step 0 there is one cluster) and in each following step a cluster is split up, until there are _n_ of them.\" (Kaufman and Rousseeuw 1990). \n\n### Describe your proposed solution\n\nImplement a class that performs divisive clustering extending BaseEstimatior and ClusterMixin.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\nIt has been implemented in R (cluster package). It's commonly used for marketing purposes and document and topic classification.\n\nKaufman, L., & Rousseeuw, P. J. (1990). Finding Groups in Data. En Wiley series in probability and statistics. https://doi.org/10.1002/9780470316801",
+      "labels": [
+        "New Feature",
+        "Hard",
+        "module:cluster",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-08-21T23:31:50Z",
+      "updated_at": "2025-08-27T15:13:49Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31989"
+    },
+    {
+      "number": 31988,
+      "title": "Different Results on ARM and x86 when using `RFECV(RandomForestClassifier())`",
+      "body": "### Describe the bug\n\nWhen using  `RFECV(RandomForestClassifier())` with `sklearn=1.7.1` with `numpy>=2.0.0`, I am seeing significant discrepancies in floating point results between ARM Macs and x86 Macs/Linux machines. This discrepancy goes away when I downgrade to `numpy=1.26.4`\n\n### Steps/Code to Reproduce\n\n```python\nimport numpy as np\nimport pandas as pd\n\nfrom sklearn.ensemble import RandomForestClassifier\nfrom sklearn.feature_selection import RFECV\n\n\ndef _extract_rfe_scores(rfecv):\n    grid_scores_ = rfecv.cv_results_['mean_test_score']\n    n_features = len(rfecv.ranking_)\n    # If using fractional step, step = integer of fraction * n_features\n    if rfecv.step < 1:\n        rfecv.step = int(rfecv.step * n_features)\n    # Need to manually calculate x-axis, grid_scores_ is a 1-d array\n    x = [n_features - (n * rfecv.step)\n         for n in range(len(grid_scores_)-1, -1, -1)]\n    if x[0] < 1:\n        x[0] = 1\n    return pd.Series(grid_scores_, index=x, name='Accuracy')\n\nnp.random.seed(0)\nX = np.random.rand(50, 20)\ny = np.random.randint(0, 2, 50)\n\nexp = pd.Series([\n            0.4999999999999999, 0.52, 0.52, 0.5399999999999999,\n            0.44000000000000006, 0.52, 0.4600000000000001,\n            0.5599999999999998, 0.52, 0.52, 0.5, 0.5399999999999999, 0.54,\n            0.5599999999999999, 0.47999999999999987, 0.6199999999999999,\n            0.5399999999999999, 0.5, 0.4999999999999999, 0.45999999999999996],\n            index=pd.Index(range(1, 21)), name='Accuracy')\n\nselector = RFECV(RandomForestClassifier(\n    random_state=123, n_estimators=2), step=1, cv=10)\nselector = selector.fit(X, y.ravel())\nselector_series = _extract_rfe_scores(selector)\n\npd.testing.assert_series_equal(selector_series, exp)\n```\n\n### Expected Results\n\nI expect the resulting `selector_series` to be equal to `exp` or\n\n```\n [0.4999999999999999, 0.52, 0.52, 0.5399999999999999,\n  0.44000000000000006, 0.52, 0.4600000000000001,\n  0.5599999999999998, 0.52, 0.52, 0.5, 0.5399999999999999, 0.54,\n  0.55...",
+      "labels": [
+        "Bug",
+        "Needs Investigation"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-21T21:29:41Z",
+      "updated_at": "2025-09-11T17:05:40Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31988"
+    },
+    {
+      "number": 31980,
+      "title": "Add beginner-friendly examples",
+      "body": "## 🎯 Beginner Examples Request\n\n### Description\nIt would be great to have more beginner-friendly examples in the project.\n\n### Suggested additions:\n- Simple \"Hello World\" examples\n- Step-by-step tutorials\n- Common use case demonstrations\n- Code comments for clarity\n\n### Why this matters:\n- Helps new developers get started\n- Makes the project more inclusive\n- Encourages community growth\n\n### Type\n- [ ] Documentation\n- [ ] Enhancement\n- [ ] Good first issue\n\n---\n*I'm a beginner and would love to help create examples that help others like me!*",
+      "labels": [
+        "spam"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-20T16:59:19Z",
+      "updated_at": "2025-08-20T22:34:28Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31980"
+    },
+    {
+      "number": 31979,
+      "title": "Create troubleshooting guide",
+      "body": "## 🔧 Troubleshooting Guide\n\n### Description\nA troubleshooting guide would help users solve common problems.\n\n### Suggested content:\n- Common error messages and solutions\n- Installation troubleshooting\n- Configuration issues\n- Performance problems\n\n### Benefits:\n- Reduces support burden\n- Improves user experience\n- Self-service help\n\n### Type\n- [ ] Documentation\n- [ ] Enhancement\n- [ ] Good first issue\n\n---\n*I'd like to help create a comprehensive troubleshooting guide!*",
+      "labels": [
+        "spam"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-20T16:36:02Z",
+      "updated_at": "2025-08-20T22:33:15Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31979"
+    },
+    {
+      "number": 31978,
+      "title": "Create troubleshooting guide",
+      "body": "## 🔧 Troubleshooting Guide\n\n### Description\nA troubleshooting guide would help users solve common problems.\n\n### Suggested content:\n- Common error messages and solutions\n- Installation troubleshooting\n- Configuration issues\n- Performance problems\n\n### Benefits:\n- Reduces support burden\n- Improves user experience\n- Self-service help\n\n### Type\n- [ ] Documentation\n- [ ] Enhancement\n- [ ] Good first issue\n\n---\n*I'd like to help create a comprehensive troubleshooting guide!*",
+      "labels": [
+        "spam"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-20T16:01:04Z",
+      "updated_at": "2025-08-20T22:30:57Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31978"
+    },
+    {
+      "number": 31976,
+      "title": "Add beginner-friendly examples",
+      "body": "## 🎯 Beginner Examples Request\n\n### Description\nIt would be great to have more beginner-friendly examples in the project.\n\n### Suggested additions:\n- Simple \"Hello World\" examples\n- Step-by-step tutorials\n- Common use case demonstrations\n- Code comments for clarity\n\n### Why this matters:\n- Helps new developers get started\n- Makes the project more inclusive\n- Encourages community growth\n\n### Type\n- [ ] Documentation\n- [ ] Enhancement\n- [ ] Good first issue\n\n---\n*I'm a beginner and would love to help create examples that help others like me!*",
+      "labels": [
+        "spam"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-20T14:14:01Z",
+      "updated_at": "2025-08-20T22:34:52Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31976"
+    },
+    {
+      "number": 31974,
+      "title": "⚠️ CI failed on Wheel builder (last failure: Aug 22, 2025) ⚠️",
+      "body": "**CI is still failing on [Wheel builder](https://github.com/scikit-learn/scikit-learn/actions/runs/17145548838)** (Aug 22, 2025)",
+      "labels": [
+        "Bug"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-20T04:39:41Z",
+      "updated_at": "2025-08-22T08:45:00Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31974"
+    },
+    {
+      "number": 31971,
+      "title": "ValueError in PLSRegression.fit() with zero-variance predictor",
+      "body": "### Describe the bug\n\nRelated: https://github.com/scipy/scipy/commit/5bc3d8814d566ef328f41cfa69ccd797c68b0d02\n\nWhen fitting a PLSRegression model, if the input array X contains a feature with zero variance (i.e., a constant column), the fit method raises a ValueError: illegal value in 4th argument of internal gesdd.\n\nThis results in a division by zero when a predictor has no variance, creating NaN values likely in the intermediate matrices. These NaN values are then passed to the SciPy function, which in turn calls the LAPACK gesdd routine for SVD, causing it to crash.\n\n### Steps/Code to Reproduce\n\n```python\nimport numpy as np\nfrom sklearn.cross_decomposition import PLSRegression\n\nn_samples = 20\ny = np.arange(n_samples, dtype=float)\n\n# This feature has zero variance.\nX = np.ones((n_samples, 1))\n\n# This will raise the error.\npls = PLSRegression(n_components=1)\npls.fit(X, y)\n```\n\n### Expected Results\n\nThe model should either fit successfully (e.g., perhaps assigning a zero weight to the zero-variance feature) or raise a more informative ValueError indicating that a predictor has zero variance.\n\n### Actual Results\n\nWe get \"ValueError: illegal value in 4th argument of internal gesdd\"\n\n```python\n/home/user/.local/lib/python3.13/site-packages/sklearn/cross_decomposition/_pls.py:99: RuntimeWarning: invalid value encountered in divide\n  y_weights = np.dot(Y.T, x_score) / np.dot(x_score.T, x_score)\n/home/user/.local/lib/python3.13/site-packages/sklearn/cross_decomposition/_pls.py:368: RuntimeWarning: invalid value encountered in divide\n  x_loadings = np.dot(x_scores, Xk) / np.dot(x_scores, x_scores)\n/home/user/.local/lib/python3.13/site-packages/sklearn/cross_decomposition/_pls.py:377: RuntimeWarning: invalid value encountered in divide\n  y_loadings = np.dot(x_scores, yk) / np.dot(x_scores, x_scores)\nTraceback (most recent call last):\n  File \"/home/user/agents/test/f.py\", line 14, in <module>\n    pls.fit(X, y)\n    ~~~~~~~^^^^^^\n  File \"/home/user/.local/lib/python3.13/site-p...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-08-19T18:44:24Z",
+      "updated_at": "2025-09-09T01:38:18Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31971"
+    },
+    {
+      "number": 31970,
+      "title": "Create troubleshooting guide",
+      "body": "## 🔧 Troubleshooting Guide\n\n### Description\nA troubleshooting guide would help users solve common problems.\n\n### Suggested content:\n- Common error messages and solutions\n- Installation troubleshooting\n- Configuration issues\n- Performance problems\n\n### Benefits:\n- Reduces support burden\n- Improves user experience\n- Self-service help\n\n### Type\n- [ ] Documentation\n- [ ] Enhancement\n- [ ] Good first issue\n\n---\n*I'd like to help create a comprehensive troubleshooting guide!*",
+      "labels": [
+        "spam"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-19T16:25:44Z",
+      "updated_at": "2025-08-20T05:07:17Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31970"
+    },
+    {
+      "number": 31968,
+      "title": "⚠️ CI failed on Linux.pylatest_pip_openblas_pandas (last failure: Aug 19, 2025) ⚠️",
+      "body": "**CI failed on [Linux.pylatest_pip_openblas_pandas](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=79175&view=logs&j=78a0bf4f-79e5-5387-94ec-13e67d216d6e)** (Aug 19, 2025)\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csc_matrix-False]\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csc_matrix-True]\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csc_array-False]\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csc_array-True]\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csr_matrix-False]\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csr_matrix-True]\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csr_array-False]\n- test_sparse_matmul_to_dense[23-float32-csc_matrix-csr_array-True]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csc_matrix-False]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csc_matrix-True]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csc_array-False]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csc_array-True]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csr_matrix-False]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csr_matrix-True]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csr_array-False]\n- test_sparse_matmul_to_dense[23-float32-csc_array-csr_array-True]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csc_matrix-False]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csc_matrix-True]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csc_array-False]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csc_array-True]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csr_matrix-False]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csr_matrix-True]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csr_array-False]\n- test_sparse_matmul_to_dense[23-float32-csr_matrix-csr_array-True]\n- test_sparse_matmul_to_dense[23-float32-csr_array-csc_matrix-False]\n- test_sparse_matmul_to_dense[23-float32-csr_array-csc_matrix-True]\n- test_sparse_matmu...",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-19T03:08:50Z",
+      "updated_at": "2025-08-22T08:54:27Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31968"
+    },
+    {
+      "number": 31965,
+      "title": "a11y - scikit-learn docs accessibility audit and remediation",
+      "body": "### Description\n\n**Note:** This is scoped as part of an ongoing NASA ROSES grant in collaboration with Quansight; as such, a couple of us at Quansight will take on the work outlined in this issue.\n\nPer the NASA ROSES grant, we will conduct an accessibility review of the [scikit-learn documentation site](https://scikit-learn.org/stable/) and work on remediation of the flagged issues. \n\nSince scikit-learn uses the PyData Sphinx Theme, on which we have already conducted thorough accessibility audits and spent a substantial amount of work over the last couple of years to make this theme more accessible, the audit and remediation of scikit-learn will focus on customised/custom features added to the scikit-learn documentation. \n\n### Proposed implementation \n\nTo achieve this goal, I propose the following approach:\n\n1. Scope what needs to be audited/tested - and update this issue to reflect this\n2. Test/audit components and report back on the findings in this issue\n3. Iteratively work on any remediation tasks as needed.\n\nPlease let me know if you have any questions or suggestions on how to approach this more effectively, so we can keep you all aligned and ensure a smooth contribution. \n\nAlso, if y'all can assign me to this issue, it would be great! ✨",
+      "labels": [
+        "Documentation"
+      ],
+      "state": "open",
+      "created_at": "2025-08-18T15:20:25Z",
+      "updated_at": "2025-08-29T15:05:28Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31965"
+    },
+    {
+      "number": 31955,
+      "title": "⚠️ CI failed on Wheel builder (last failure: Aug 19, 2025) ⚠️",
+      "body": "**CI is still failing on [Wheel builder](https://github.com/scikit-learn/scikit-learn/actions/runs/17059042784)** (Aug 19, 2025)",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-16T04:54:50Z",
+      "updated_at": "2025-08-19T11:37:17Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31955"
+    },
+    {
+      "number": 31947,
+      "title": "UserWarning: X has feature names, but PowerTransformer was fitted without feature names",
+      "body": "### Describe the bug\n\nWhen using pandas dataframes and a `TransformedTargetRegressor` with `PowerTransformer` with `set_output(transform=\"pandas\")`, I get this warning:\n\n> UserWarning: X has feature names, but PowerTransformer was fitted without feature names\n\nThe warning does not arise when using other estimators (e.g. `StandardScaler`) but only with `PowerTransformer`.\n\nThe problem seems to originate from the `inverse_transform` implementation of `PowerTransformer`.\n\n### Steps/Code to Reproduce\n\n```python\nfrom sklearn.datasets import load_iris\nfrom sklearn.linear_model import LinearRegression\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.compose import TransformedTargetRegressor\nfrom sklearn.preprocessing import PowerTransformer, StandardScaler\n\nX, y = load_iris(return_X_y=True, as_frame=True)\nX_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)\n\n# This works fine:\npipeline = TransformedTargetRegressor(\n    regressor=LinearRegression(),\n    transformer=StandardScaler().set_output(transform=\"pandas\")\n)\npipeline.fit(X_train, y_train)\ny_test_pred = pipeline.predict(X_test)\n\n# But this gets a warning:\npipeline = TransformedTargetRegressor(\n    regressor=LinearRegression(),\n    transformer=PowerTransformer().set_output(transform=\"pandas\")\n)\npipeline.fit(X_train, y_train)\ny_test_pred = pipeline.predict(X_test)\n```\n\n### Expected Results\n\nNo warning\n\n### Actual Results\n\n> UserWarning: X has feature names, but PowerTransformer was fitted without feature names\n\n### Versions\n\n```shell\nSystem:\n    python: 3.11.9\n\nPython dependencies:\n      sklearn: 1.7.1\n          pip: 25.2\n   setuptools: 65.5.0\n        numpy: 2.0.2\n        scipy: 1.15.1\n       Cython: None\n       pandas: 2.2.3\n   matplotlib: 3.10.0\n       joblib: 1.4.2\nthreadpoolctl: 3.5.0\n```",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-08-14T09:52:18Z",
+      "updated_at": "2025-08-27T15:49:02Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31947"
+    },
+    {
+      "number": 31940,
+      "title": "Diabetes data should match the original source",
+      "body": "### Describe the bug\n\nWhen `load_diabetes` is called with `scaled=False`, the `s5` attribute has some values with insufficient precision:\nAll values should stay equal when rounded to 4 decimals, but 11 of them don't.\n\nThis is caused by the fact that the unpacked `sklearn/datasets/data/diabetes_data_raw.csv.gz` has some numeric differences to the original data.\nE.g. entry nr. 147 contains `4.803999999999999` here (in line 147), and `4.804` in the original (line 148 because of header).\n\nThe following example shows different behavior when the data source is toggled with `use_internal`.\n\nI need the correct data because I have code that tries to autodetect the precision – which currently cannot detect the correct precision of `s5`.\n\n### Steps/Code to Reproduce\n\n```python\nfrom sklearn.datasets import load_diabetes\nimport requests\nfrom io import StringIO\nimport pandas as pd\n\nuse_internal = True\nif use_internal:\n    diabetes = load_diabetes(as_frame=True, scaled=False)\n    s5 = diabetes.frame['s5']\nelse:\n    # diabetes.DESCR names https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html\n    # as source URL.\n    # There the following orig_url is linked as the original data set.\n    orig_url = 'https://www4.stat.ncsu.edu/~boos/var.select/diabetes.tab.txt'\n    response = requests.get(orig_url)\n    response.raise_for_status()\n    data = StringIO(response.text)\n    diabetes = pd.read_csv(data, sep='\\t')\n    s5 = diabetes['S5']\n\nrounded = s5.round(4)\npd.set_option('display.precision', 16)\ndiff = s5[s5 != rounded] \nprint(diff)\nassert(diff.empty)\n\n```\n\n### Expected Results\n\n`Series([], Name: S2, dtype: float64)`\n\nand no assertion.\n\n(As with `use_internal = False`)\n\n\n### Actual Results\n\n```\n146    4.8039999999999994\n239    5.3660000000000005\n265    4.8039999999999994\n303    5.4510000000000005\n313    5.2470000000000008\n324    5.3660000000000005\n359    4.8039999999999994\n364    4.8039999999999994\n410    5.3660000000000005\n415    4.8039999999999994\n428    5.3660000000000005\nName: s5, ...",
+      "labels": [
+        "module:datasets"
+      ],
+      "state": "open",
+      "created_at": "2025-08-13T11:11:37Z",
+      "updated_at": "2025-08-25T13:35:44Z",
+      "comments": 8,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31940"
+    },
+    {
+      "number": 31931,
+      "title": "Allow common estimator checks to use `xfail_strict=True`",
+      "body": "### Describe the workflow you want to enable\n\nI'd like to be able to use [`parametrize_with_checks`](https://scikit-learn.org/stable/modules/generated/sklearn.utils.estimator_checks.parametrize_with_checks.html) and use \"strict mode\" to notice when checks that are marked as xfail start passing. But I don't want to turn on strict mode for my whole test suite (`xfail_strict = true` in `pytest.ini`)\n\n### Describe your proposed solution\n\nWe use `pytest.mark.xfail` internally when generating all the estimator + check combinations. I think we could pass `strict=True` there to make it a failure for a test, that is marked as xfail, to pass.\n\nhttps://github.com/scikit-learn/scikit-learn/blob/c5497b7f7eacfaff061cf68e09bcd48aa93d4d6b/sklearn/utils/estimator_checks.py#L456\n\nI think we want to make this behaviour configurable, so we need a new parameter for `parametrize_with_checks`, something like `strict=None` with the option to set it to `True`/`False`.\n\nI'd set the default to `None` so that not setting it does not override the setting in `pytest.ini` (to be checked if this actually works). If you are using `pytest.ini` to control strict mode then not passing `strict` to `parametrize_with_checks` should not change anything.\n\n### Describe alternatives you've considered, if relevant\n\nI tried layering `@pytest.mark.xfail(strict=True)` on top of `@parametrize_with_checks` but that doesn't seem to work.\n\n```python\n@pytest.mark.xfail(strict=True)\n@parametrize_with_checks(...)\ndef test_sklearn_compat(estimator, check):\n   ...\n```\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "Enhancement"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-12T13:02:24Z",
+      "updated_at": "2025-09-01T10:15:04Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31931"
+    },
+    {
+      "number": 31930,
+      "title": "Docs instructions for installing  LLVM OpenMP with Homebrew may need updating",
+      "body": "### Describe the issue linked to the documentation\n\nEnvironment variables CFLAGS, CXXFLAGS, CXXFLAGS mentioned here:\nhttps://scikit-learn.org/dev/developers/advanced_installation.html#compiler-macos:~:text=Set%20the%20following%20environment%20variables%3A\nmay be for Intel-based Macs only.\n\nSo when trying to do this:\n```\nmake clean\npip install --editable . \\\n    --verbose --no-build-isolation \\\n    --config-settings editable-verbose=true\n```\nI got  `../../meson.build:1:0: ERROR: Compiler /usr/bin/clang cannot compile programs.`\n\nThe reason being that `Homebrew` installed `libomp` here: `/opt/homebrew/opt/libomp` and not here`/usr/local/opt/libomp/`.\n\n\n### Suggest a potential alternative/fix\n\nModify the env variables that I mentioned above to the right path to `libomp` for M2 macs.\n\nPlease note:\n\n- I'm not sure if the variables should be updated or have the two mac versions (Intel vs M1/M2).\n- I didn't test that all works for an Intel mac. \n- Modifying the variables to the correct path, I was able to make the new environment.",
+      "labels": [
+        "Documentation"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-12T10:12:30Z",
+      "updated_at": "2025-08-13T13:36:06Z",
+      "comments": 12,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31930"
+    },
+    {
+      "number": 31925,
+      "title": "Add a better implementation of Latent Dirichlet Allocation",
+      "body": "### Describe the workflow you want to enable\n\nWhile this remains to be rigorously tested, the scikit-learn implementation of Latent Dirichlet Allocation is, in the [unanimous experience of topic modelling scholars](https://maria-antoniak.github.io/2022/07/27/topic-modeling-for-the-people.html), outperformed by Gibbs-Sampling implementations, such as the ones in MALLET and tomotopy when it comes to topic quality. I have personally been criticised for using the scikit-learn implementation of LDA in my publications as a baseline, since other scholars do not think this implementation does justice to how well LDA can actually work in practice.\nThis is quite sad, since scikit-learn otherwise has a very authoritative position when it comes to machine learning, and many research and industry workflows build on your well-thought out and convenient API.\n\nIt would be of immense value for both industry and academia if Latent Dirichlet Allocation had multiple implementations, and preferably another one were the default.\n\n### Describe your proposed solution\n\nInclude the implementation of LDA from the following publication:\n[Distributed Algorithms for Topic Models](https://jmlr.org/papers/volume10/newman09a/newman09a.pdf)\n\nThis implementation has been around for a while, is used both in tomotopy and MALLET, is published in a reputable journal and has been cited more than 600 times according to Google Scholar.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "Needs Info",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-08-11T14:43:45Z",
+      "updated_at": "2025-09-03T06:09:40Z",
+      "comments": 16,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31925"
+    },
+    {
+      "number": 31923,
+      "title": "404 when fetching datasets with sklearn.datasets.fetch_openml",
+      "body": "### Describe the bug\n\nMy Azure DevOps pipeline started failing to fetch data from OpenML with 404 as of 9 August. My original line in a Jupyter notebook uses `fetch_openml(name='SPECT', version=1, parser='auto')`; but I've not been able to download any other dataset either (e.g., iris, miceprotein).\n\nThe SPECT dataset at OpenML [here ](https://www.openml.org/search?type=data&status=active&id=336) looks ok. So is this a scikit-learn bug rather than an OpenML one? I can't find any reported issues about this at https://github.com/openml/openml.org/issues either.\n\n### Steps/Code to Reproduce\n\n```\nfrom sklearn.datasets import fetch_openml\nfetch_openml(name='SPECT', version=1, parser='auto')\n```\n\n### Expected Results\n\nData should be fetched with no error.\n\n### Actual Results\n\nThis is from scikit-learn 1.5.1 and Python 3.9.20 in my local Windows Python interpreter:\n```\nC:\\Apps\\Miniconda3\\v3_8_5_x64\\Local\\envs\\prodaps-dev-py39\\lib\\site-packages\\sklearn\\datasets\\_openml.py:107: UserWarning: A network error occurred while downloading https://api.openml.org/data/v1/download/52239. Retrying...\n  warn(\nTraceback (most recent call last):\n  File \"C:\\Apps\\Miniconda3\\v3_8_5_x64\\Local\\envs\\prodaps-dev-py39\\lib\\site-packages\\IPython\\core\\interactiveshell.py\", line 3526, in run_code\n    exec(code_obj, self.user_global_ns, self.user_ns)\n  File \"<ipython-input-3-de4cc69a81bb>\", line 1, in <module>\n    fetch_openml(name='SPECT')\n  File \"C:\\Apps\\Miniconda3\\v3_8_5_x64\\Local\\envs\\prodaps-dev-py39\\lib\\site-packages\\sklearn\\utils\\_param_validation.py\", line 213, in wrapper\n    return func(*args, **kwargs)\n  File \"C:\\Apps\\Miniconda3\\v3_8_5_x64\\Local\\envs\\prodaps-dev-py39\\lib\\site-packages\\sklearn\\datasets\\_openml.py\", line 1127, in fetch_openml\n    bunch = _download_data_to_bunch(\n  File \"C:\\Apps\\Miniconda3\\v3_8_5_x64\\Local\\envs\\prodaps-dev-py39\\lib\\site-packages\\sklearn\\datasets\\_openml.py\", line 681, in _download_data_to_bunch\n    X, y, frame, categories = _retry_with_clean_cache(\n  File \"C:\\...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-11T12:35:23Z",
+      "updated_at": "2025-08-14T08:39:06Z",
+      "comments": 7,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31923"
+    },
+    {
+      "number": 31913,
+      "title": "⚠️ CI failed on Linux_Nightly.pylatest_pip_scipy_dev (last failure: Aug 10, 2025) ⚠️",
+      "body": "**CI failed on [Linux_Nightly.pylatest_pip_scipy_dev](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78962&view=logs&j=dfe99b15-50db-5d7b-b1e9-4105c42527cf)** (Aug 10, 2025)\n- test_dtype_preprocess_data[73-True-True]",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-10T03:03:23Z",
+      "updated_at": "2025-08-13T12:36:40Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31913"
+    },
+    {
+      "number": 31912,
+      "title": "Stable extender contract via `fit` / `_fit` resp `predict` / `_predict` separation",
+      "body": "### Describe the workflow you want to enable\n\ntl;dr, I am suggestion to refactor `scikit-learn` internals to a layer separation with boilerplate between `fit` and `_fit` resp `predict` and `_predict` methods, to make extender interfaces more stable. Also see https://github.com/scikit-learn/scikit-learn/issues/31728\n\nMore background: Currently, every time `scikit-learn` releases a new minor version - e.g., 1.5.0, 1.6.0, 1.7.0 - compliant extensions, e.g., custom transformers, classifiers, etc, break - specifically, referring to the API conformance as tested through `check_estimator` or `parametrize_with_checks`.\n\nThese repeated breakages in the \"extender contract\" contrast the stability of the usage contract, which is stable and professionally managed.\n\nFor a package like `scikit-learn` which means to be a standard not just for ML algorithms but also an API standard that everyone uses, this is not a good state to be in - \"do not break user code\" is the maxim that gets broken for power users writing extensions.\n\nOf course maintaining downwards compatibility is not always possible, but nothing should break without a proper warning.\n\n### Describe your proposed solution\n\nThe `fit`/`_fit` separation would ensure stability of the extension contract - and would also allow to build secondary deprecation patterns in relation to it.\n\nThe (oop) pattern this would implement is the so-called \"template pattern\".\n\nIt would allow to remove likely changing parts such as the boilerplate (e.g., `validate_data` vs `_validate_data` and such) from the extension locus, and thus completely prevent breakage in relation to boilerplate changes.\nReference: https://refactoring.guru/design-patterns/template-method\n\nExamples of how this can be used to improve stability:\n\n* `sktime`, for a different API, has a separation between `fit` calling an internal `_fit`, where change-prone boilerplate is sandwiched between a stable user contract (`fit`) and a stable extender contract (`_fit`); similarly `pr...",
+      "labels": [
+        "RFC",
+        "Developer API"
+      ],
+      "state": "open",
+      "created_at": "2025-08-09T22:02:48Z",
+      "updated_at": "2025-08-30T16:35:47Z",
+      "comments": 19,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31912"
+    },
+    {
+      "number": 31907,
+      "title": "HDBSCAN modifies input precomputed distance matrix",
+      "body": "### Describe the bug\n\nWhen using `sklearn.cluster.HDBSCAN` with `metric=\"precomputed\"`, the input distance matrix is modified after calling `fit_predict()`. The original `hdbscan` package (v0.8.40) works correctly.  \n\n### Steps/Code to Reproduce\n```py\nimport numpy as np\nfrom sklearn.cluster import HDBSCAN\n\nrmsd_matrix = np.random.rand(5, 5)\nrmsd_matrix = (rmsd_matrix + rmsd_matrix.T) / 2\nnp.fill_diagonal(rmsd_matrix, 0)\n\nprint(\"Before HDBSCAN:\")\nprint(rmsd_matrix)\n\nhdb = HDBSCAN(metric=\"precomputed\", min_cluster_size=2)\nhdb.fit_predict(rmsd_matrix)\n\nprint(\"\\nAfter HDBSCAN:\")\nprint(rmsd_matrix)  # Matrix is changed!\n```\n\n### Expected Results\n\nInput matrix should remain unchanged (as in original hdbscan).\n\n### Actual Results\n\nInput matrix is changed\n\n### Versions\n\n```shell\nSystem:\n    python: 3.12.3 (main, Jun 18 2025, 17:59:45) [GCC 13.3.0]\nexecutable: /home/username/project/bin/python3\n   machine: Linux-6.14.0-27-generic-x86_64-with-glibc2.39\n\nPython dependencies:\n      sklearn: 1.7.0\n          pip: 24.0\n   setuptools: 80.9.0\n        numpy: 2.2.6\n        scipy: 1.16.0\n       Cython: None\n       pandas: 2.3.0\n   matplotlib: 3.10.3\n       joblib: 1.5.1\nthreadpoolctl: 3.6.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: blas\n   internal_api: openblas\n    num_threads: 18\n         prefix: libscipy_openblas\n       filepath: /home/username/project/lib/python3.12/site-packages/numpy.libs/libscipy_openblas64_-56d6093b.so\n        version: 0.3.29\nthreading_layer: pthreads\n   architecture: Haswell\n\n       user_api: blas\n   internal_api: openblas\n    num_threads: 18\n         prefix: libscipy_openblas\n       filepath: /home/username/project/lib/python3.12/site-packages/scipy.libs/libscipy_openblas-68440149.so\n        version: 0.3.28\nthreading_layer: pthreads\n   architecture: Haswell\n\n       user_api: openmp\n   internal_api: openmp\n    num_threads: 18\n         prefix: libgomp\n       filepath: /home/username/project/lib/python3.12/site-packages/scikit_learn.libs/lib...",
+      "labels": [
+        "Bug",
+        "module:cluster"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-09T12:22:53Z",
+      "updated_at": "2025-09-09T13:30:38Z",
+      "comments": 14,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31907"
+    },
+    {
+      "number": 31904,
+      "title": "⚠️ CI failed on Linux_Runs.pylatest_conda_forge_mkl (last failure: Aug 17, 2025) ⚠️",
+      "body": "**CI is still failing on [Linux_Runs.pylatest_conda_forge_mkl](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=79126&view=logs&j=dde5042c-7464-5d47-9507-31bdd2ee0a3a)** (Aug 17, 2025)\n- Test Collection Failure",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-09T02:51:16Z",
+      "updated_at": "2025-08-22T10:59:31Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31904"
+    },
+    {
+      "number": 31901,
+      "title": "QuantileTransformer is incredibly slow",
+      "body": "### Describe the workflow you want to enable\n\nThis is a feature request to improve performance of the QuantileTransformer. It takes ~60 minutes to fit, uses a huge amount of memory when transforming large non-sparse dataframes with 30M+ rows and 500 columns. It also does not support sample_weight.  Ideally it should be as fast as catboost's Pool quantize method, which does many of the same computations in a fraction of the time:\nhttps://catboost.ai/docs/en/concepts/python-reference_pool_quantized\n\n\n### Describe your proposed solution\n\nSee source code for https://catboost.ai/docs/en/concepts/python-reference_pool_quantized\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-08T23:10:38Z",
+      "updated_at": "2025-08-27T06:40:57Z",
+      "comments": 13,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31901"
+    },
+    {
+      "number": 31899,
+      "title": "Add `covariance_estimator` to `QuadraticDiscriminantAnalysis`?",
+      "body": "### Describe the workflow you want to enable\n\n`LinearDiscriminantAnalysis` has an optional `covariance_estimator` parameter, while the similar `QuadraticDiscriminantAnalysis` does not. QDA is even more sensitive than LDA to covariance estimation.\n\nWould it be desirable to add the `covariance_estimator` parameter to `QuadraticDiscriminantAnalysis`? \n\n### Describe your proposed solution\n\nI can try to implement this. I would look at how it is done in `LinearDiscriminantAnalysis`, and just copy that implementation into `QuadraticDiscriminantAnalysis`.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-08-08T15:03:02Z",
+      "updated_at": "2025-09-05T13:44:52Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31899"
+    },
+    {
+      "number": 31896,
+      "title": "⚠️ CI failed on Wheel builder (last failure: Aug 08, 2025) ⚠️",
+      "body": "**CI failed on [Wheel builder](https://github.com/scikit-learn/scikit-learn/actions/runs/16821604494)** (Aug 08, 2025)",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-08T04:32:32Z",
+      "updated_at": "2025-08-08T13:27:43Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31896"
+    },
+    {
+      "number": 31894,
+      "title": "TunedThreasholdClassiffierCV not understanding `func(y_pred, y_true, ...)` as a valid `scoring`",
+      "body": "This code\n\n```py\nfrom sklearn.model_selection import TunedThresholdClassifierCV\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.datasets import make_classification\nimport sklearn\nimport numpy as np\n\nsklearn.set_config(enable_metadata_routing=True)\n\ndef my_metric(y_true, y_pred, sample_weight=None):\n    assert sample_weight is not None\n    return np.mean(y_pred)\n\nX, y = make_classification(random_state=0)\nsample_weight = np.random.rand(len(y))\n\nest = TunedThresholdClassifierCV(LogisticRegression(), cv=2, scoring=my_metric)\nest.fit(X, y, sample_weight=sample_weight)\n```\n\ngives this:\n\n```py\nTraceback (most recent call last):\n  File \"/tmp/2.py\", line 17, in <module>\n    est.fit(X, y, sample_weight=sample_weight)\n  File \"/path/to/scikit-learn/sklearn/base.py\", line 1366, in wrapper\n    return fit_method(estimator, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/path/to/scikit-learn/sklearn/model_selection/_classification_threshold.py\", line 129, in fit\n    self._fit(X, y, **params)\n  File \"/path/to/scikit-learn/sklearn/model_selection/_classification_threshold.py\", line 742, in _fit\n    routed_params = process_routing(self, \"fit\", **params)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/path/to/scikit-learn/sklearn/utils/_metadata_requests.py\", line 1636, in process_routing\n    request_routing = get_routing_for_object(_obj)\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/path/to/scikit-learn/sklearn/utils/_metadata_requests.py\", line 1197, in get_routing_for_object\n    return deepcopy(obj.get_metadata_routing())\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/path/to/scikit-learn/sklearn/model_selection/_classification_threshold.py\", line 871, in get_metadata_routing\n    scorer=self._get_curve_scorer(),\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/path/to/scikit-learn/sklearn/model_selection/_classification_threshold.py\", line 880, in _get_curve_scorer\n    curve_scorer = _CurveScorer.fr...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-07T12:50:24Z",
+      "updated_at": "2025-08-11T13:01:50Z",
+      "comments": 5,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31894"
+    },
+    {
+      "number": 31889,
+      "title": "We don't support `func(estimator, X, y, ...)` across the board as a scorer",
+      "body": "Our documentation [here](https://scikit-learn.org/stable/modules/model_evaluation.html#custom-scorer-objects-from-scratch) states a callable with a `(estimator, X, y)` is a valid scorer. However, it isn't.\n\nIn https://github.com/scikit-learn/scikit-learn/issues/31599, it is observed that passing such an object fails in the context of a `_MultimetricScorer`.\n\nWhile working on other metadata routing issues, I found that `TunedThresholdClassifierCV` also fails with such an object, since it creates a `_CurveScorer` which ignores the object and expects to just use the `_score_func` of a given _scorer_ object.\n\nConsider the following script:\n\n```py\nfrom sklearn.linear_model import LogisticRegression\nfrom sklearn.model_selection import TunedThresholdClassifierCV, cross_val_score\nfrom sklearn.datasets import make_classification\nfrom sklearn.metrics._scorer import _Scorer, mean_squared_error, make_scorer\n\n\nclass MyScorer(_Scorer):\n    def _score(self, *args, **kwargs):\n        print(\"I'm logging stuff\")\n        return super()._score(*args, **kwargs)\n\ndef my_scorer(estimator, X, y, **kwargs):\n    print(\"I'm logging stuff in my_scorer\")\n    return mean_squared_error(estimator.predict(X), y, **kwargs)\n\ndef my_metric(y_pred, y_true, **kwargs):\n    print(\"I'm logging stuff in my_metric\")\n    return mean_squared_error(y_pred, y_true, **kwargs)\n\nmy_second_scorer = make_scorer(my_metric)\n\nX, y = make_classification()\n\n# this prints logs\nprint(\"cross_val_score'ing\")\ncross_val_score(\n    LogisticRegression(),\n    X,\n    y,\n    scoring=MyScorer(mean_squared_error, sign=1, kwargs={}, response_method=\"predict\"),\n)\n\nprint(\"1. TunedThresholdClassifierCV'ing\")\nmodel = TunedThresholdClassifierCV(\n    LogisticRegression(),\n    # scoring=MyScorer(mean_squared_error, sign=1, kwargs={}, response_method=\"predict\"),\n    # scoring=my_scorer,\n    scoring=my_second_scorer,\n)\nmodel.fit(X, y)\n\nprint(\"2. TunedThresholdClassifierCV'ing\")\nmodel = TunedThresholdClassifierCV(\n    LogisticRegression(),\n    s...",
+      "labels": [
+        "Bug",
+        "API",
+        "module:metrics"
+      ],
+      "state": "open",
+      "created_at": "2025-08-07T10:50:45Z",
+      "updated_at": "2025-08-20T19:16:08Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31889"
+    },
+    {
+      "number": 31885,
+      "title": "`SVC(probability=True)`  is not thread-safe",
+      "body": "This was discovered while running:\n\n```\npytest -v --parallel-threads=4 --iterations=2 sklearn/svm/tests/test_sparse.py\n```\n\nbefore including the fix pushed to #30041 under https://github.com/scikit-learn/scikit-learn/pull/30041/commits/bce2b4eb7d5ab49cf758f98c667e86243883d1de.\n\nI suspect the problem is that the built-in Platt scaling implementation of the vendored C++ code base of libsvm that uses a singleton pseudo random generator. Therefore, seeding the shared RNG state from competing threads prevents getting reproducible results and hence the test failure.",
+      "labels": [
+        "Bug",
+        "Moderate"
+      ],
+      "state": "open",
+      "created_at": "2025-08-06T15:37:02Z",
+      "updated_at": "2025-08-29T03:53:15Z",
+      "comments": 7,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31885"
+    },
+    {
+      "number": 31884,
+      "title": "pairwise_distances_argmin_min / ArgKMin64 is not thread-safe",
+      "body": "### Describe the bug\n\nProblem found while test investigating failures found in #30041. I crafted a minimal reproducer below. It might be caused by a race condition (corruption) of shared intermediate buffers used in OpenMP threads.\n\nSome remarks:\n\n- the problem happens with either strategy (\"parallel_on_X\" vs \"parallel_on_Y\");\n- running the reproducer with `OMP_NUM_THREADS=1` hides the problem;\n- running the reproducer with a lower than default value for `OMP_NUM_THREADS` makes the problem less likely to happen;\n- using `threadpoolctl.threadpool_limits(limits=1, user_api=\"openmp\")` does not hide the problem for some reason...\n\n### Steps/Code to Reproduce\n\n```python\nfrom sklearn.metrics._pairwise_distances_reduction._argkmin import ArgKmin64\nimport numpy as np\nfrom joblib import delayed, Parallel\nfrom threadpoolctl import threadpool_info\nfrom pprint import pprint\n\npprint(threadpool_info())\nrng = np.random.RandomState(0)\nX = rng.randn(97, 149)\nY = rng.randn(111, 149)\n\n\n# Note: strategy does not matter.\nshared_kwargs = dict(\n    k=1, metric=\"euclidean\", strategy=\"parallel_on_X\", return_distance=True\n)\nreference_results = ArgKmin64.compute(X, Y, **shared_kwargs)\n\nfor n_iter in range(10):\n    print(\".\", end=\"\")\n    for results in Parallel(n_jobs=4, backend=\"threading\")(\n        delayed(ArgKmin64.compute)(X, Y, **shared_kwargs) for _ in range(100)\n    ):\n        if shared_kwargs[\"return_distance\"]:\n            result_distances, result_indices = results\n            np.testing.assert_allclose(result_distances, reference_results[0])\n            np.testing.assert_array_equal(result_indices, reference_results[1])\n        else:\n            np.testing.assert_array_equal(results, reference_results)\n```\n\n### Expected Results\n\nNo error.\n\n### Actual Results\n\n```python-traceback\n---------------------------------------------------------------------------\nAssertionError                            Traceback (most recent call last)\nCell In[20], line 27\n     25 if shared_kwargs[\"return_di...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-08-06T14:10:35Z",
+      "updated_at": "2025-08-22T08:13:22Z",
+      "comments": 15,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31884"
+    },
+    {
+      "number": 31883,
+      "title": "Fitting different instances of `LinearSVR` is not thread-safe",
+      "body": "### Describe the bug\n\nFound while working on #30041.\n\nSee the reproducer below. Fitting `LinearSVR` probably relies on a shared global state in the C++ code and that introduces a race condition when fitting several models concurrently in different threads. As a result, the outcomes are randomly corrupted.\n\n`LinearSVC` does not seem to have the problem (or at least not with its default solver).\n\n### Steps/Code to Reproduce\n\n```python\n# %%\nimport numpy as np\nfrom sklearn.svm import LinearSVR, LinearSVC\nfrom sklearn.datasets import make_regression\nimport warnings\nfrom sklearn.exceptions import ConvergenceWarning\nfrom joblib import Parallel, delayed\n\n\nwarnings.filterwarnings(\"ignore\", category=ConvergenceWarning)\n\n\nX, y = make_regression(n_samples=100, n_features=20, noise=0.1, random_state=42)\n\n\nC_range = np.logspace(-6, 6, 13)\n\nmodel_class = LinearSVR\nif model_class == LinearSVC:\n    y = np.sign(y)  # Convert to binary classification for LinearSVC\n\n\nsequential_results = [\n    model_class(C=C, random_state=0).fit(X, y).coef_.copy() for C in C_range\n]\n\n\nparallel_results = Parallel(n_jobs=4, backend=\"threading\")(\n    delayed(lambda C: model_class(C=C, random_state=0).fit(X, y).coef_.copy())(C)\n    for C in C_range\n)\nnp.testing.assert_array_equal(\n    sequential_results,\n    parallel_results,\n    err_msg=\"Parallel and sequential results differ.\",\n)\n```\n\n### Expected Results\n\nNothing.\n\n### Actual Results\n\n```python\n\n---------------------------------------------------------------------------\nAssertionError                            Traceback (most recent call last)\nCell In[22], line 32\n     23 sequential_results = [\n     24     model_class(C=C, random_state=0).fit(X, y).coef_.copy() for C in C_range\n     25 ]\n     28 parallel_results = Parallel(n_jobs=4, backend=\"threading\")(\n     29     delayed(lambda C: model_class(C=C, random_state=0).fit(X, y).coef_.copy())(C)\n     30     for C in C_range\n     31 )\n---> 32 np.testing.assert_array_equal(\n     33     sequential_results,\n...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-08-06T09:26:48Z",
+      "updated_at": "2025-08-27T12:37:43Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31883"
+    },
+    {
+      "number": 31872,
+      "title": "Strange normalization of semi-supervised label propagation in `_build_graph`",
+      "body": "The method `_build_graph` on the `LabelPropagation` class in `sklearn/semi_supervised/_label_propagation.py` [(line 455)](https://github.com/scikit-learn/scikit-learn/blob/7d1d96819172e2a7c826f04c68b9d93188cf6a92/sklearn/semi_supervised/_label_propagation.py#L455) treats normalization differently for sparse and dense kernels. I have questions about both of them.\n\n** (Edited) Summary **\nTroubles with the current code normalization:\n- In the dense affinity_matrix case, the current code sums axis=0 and then divides the rows by these sums. Other normalizations in semi_supervised use axis=1 (as this case should). This does not cause incorrect result so long as we have symmetric affinity_matrices. The dense case arises for kernel \"rbf\" which provides symmetric matrices. But if someone provides their own kernel the normalization could be incorrect.\n- In the sparse affinity_matrix case, the current code divides all rows by the sum of the first row. This is not standard normalization, but does not cause errors so long as the row sums are all the same. The sparse case arises for kernel \"knn\" which has all rows sum to k. But if someone provides their own kernel the normalization could be incorrect.\n- The normalization is different for the dense and sparse cases, which could be confusing to someone writing their own kernel.\n\nThe fix involves changing `axis=0` to `axis=1` and correcting the sparse case to divide each row by its sum when the row sums are not all equal.\n\n<details>\n\n<summary> original somewhat rambling description </summary>\n\n** Summary **\nThe method returns a different `affinity_matrix` for sparse and for dense versions of the same kernel matrix. Neither sparse nor dense versions normalize the usual way (columns sum to 1). The dense case is correct for symmetric input kernels. The sparse case scales all values by a constant instead of by column sums.\n\nI suspect the results still converge in most non-symmetric cases. That's probably why this hasn't caused any issue...",
+      "labels": [
+        "Bug"
+      ],
+      "state": "open",
+      "created_at": "2025-08-03T21:59:31Z",
+      "updated_at": "2025-08-11T13:05:09Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31872"
+    },
+    {
+      "number": 31871,
+      "title": "Proposal to Contribute Uncertainty Quantification via Aleatoric/Epistemic Decomposition to scikit-learn",
+      "body": "### Describe the workflow you want to enable\n\nHi,\n\nWhile ensemble methods like RandomForestRegressor are widely used, scikit-learn currently lacks native support for estimating and exposing predictive uncertainty—an increasingly essential feature in many applied domains such as healthcare, scientific modeling, and decision support systems.\n\n### Describe your proposed solution\n\n\nI propose adding functionality to expose both:\n\n    Aleatoric uncertainty (data-driven),\n    Epistemic uncertainty (model-driven).\n\n\nImportantly, this is not just a concept—I have already implemented this wrapper as part of my ongoing PhD research. The approach is detailed in a preprint available here:\n\nhttp://dx.doi.org/10.22541/au.175373261.14525669/v1 . \n\nThe implementation is functional, tested, and used in geophysical mapping described in the paper.\n\nThis contribution builds on established research by Mohammad Hossein Shaker and Eyke Hüllermeier in uncertainty estimation for Random Forest Classification, and I have extended those principles to Random Forest Regression.\n\nThe approach is detailed in this article available here:\n\nhttp://dx.doi.org/10.1007/978-3-030-44584-3_35\n\nThanks\n\n### Describe alternatives you've considered, if relevant\n\n\n\n\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-08-03T07:09:08Z",
+      "updated_at": "2025-08-04T16:55:35Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31871"
+    },
+    {
+      "number": 31870,
+      "title": "Faster algorithm for KMeans",
+      "body": "### Describe the workflow you want to enable\n\nDear community and developers, \n\nI think [this work](https://arxiv.org/abs/2308.09701) might be interesting to the scikit-community.  In this work, we discuss 2 classical algorithms for an sampling-based version of k-means, which return an epsilon-approximation of the centroids (which is user-determined). \n\nI was wondering if this could be an interesting addition to your (great) library, as it shows practical advantages already on small datasets.\n\n### Describe your proposed solution\n\nAlgorithm 1 of  [this work](https://arxiv.org/abs/2308.09701) can result in a faster k-mean algorithm. \n\nI implemented the algorithm, which can be found [here](\nhttps://github.com/Scinawa/do-you-know-what-q-means). However, as it is just a proof of concept, is not ready to be merged in scikit-learn. \n\n\n\n### Describe alternatives you've considered, if relevant\n\nThere are other fast coreset-based algorithms, which are much more complicated to implement, and are practically slower than our algorithm. \n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-08-03T05:18:33Z",
+      "updated_at": "2025-08-04T11:14:48Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31870"
+    },
+    {
+      "number": 31869,
+      "title": "Array API support for CalibratedClassifierCV",
+      "body": "### Describe the workflow you want to enable\n\nTowards #26024. \nUse `CalibratedClassifierCV` with pytorch or tensorflow models.\nThis has become even more interesting use case with #31068.\n\n### Describe your proposed solution\n\nIn line with out Array API adoption path.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "help wanted",
+        "Hard",
+        "module:calibration",
+        "Array API"
+      ],
+      "state": "open",
+      "created_at": "2025-08-02T10:02:10Z",
+      "updated_at": "2025-09-05T02:20:31Z",
+      "comments": 7,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31869"
+    },
+    {
+      "number": 31862,
+      "title": "Ordinal Encoder Type Hints State unknown_value should be float, but this produces an error.",
+      "body": "### Describe the bug\n\nFollowing the type hints of the OrdinalEncoder I set the unknown_value parameter to -1.0.\n\n<img width=\"507\" height=\"146\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/b9c86ab1-7a23-47b3-ad89-9de091c8d81e\" />\n\nThis produces an error when handle_unknown='use_encoded_value' as it needs and int. Should hopefully just be as easy as updating the type hints unless there is something I'm missing?\n\n### Steps/Code to Reproduce\n\n```python\nordinal_encoder = OrdinalEncoder(\n                handle_unknown=\"use_encoded_value\", unknown_value=-1\n            )\n\nordinal_encoder.fit_transform(...)\n```\n\n### Expected Results\n\nExpected result would be to not get an error when following type hints.\n\n### Actual Results\n\nAn error is raised about the type of the unknown_value\n\n### Versions\n\n```shell\ninternal_api: openblas\n    num_threads: 12\n         prefix: libscipy_openblas\n       filepath: /databricks/python3/lib/python3.12/site-packages/scipy.libs/libscipy_openblas-68440149.so\n        version: 0.3.28\nthreading_layer: pthreads\n   architecture: SkylakeX\n\n       user_api: openmp\n   internal_api: openmp\n    num_threads: 6\n         prefix: libgomp\n       filepath: /databricks/python3/lib/python3.12/site-packages/torch/lib/libgomp-a34b3233.so.1\n        version: None\n\n       user_api: openmp\n   internal_api: openmp\n    num_threads: 12\n         prefix: libgomp\n       filepath: /databricks/python3/lib/python3.12/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0\n        version: None\n```",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-31T21:57:19Z",
+      "updated_at": "2025-08-01T07:27:02Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31862"
+    },
+    {
+      "number": 31859,
+      "title": "Intercepts of Newton-Cholesky logistic regression get corrupted when warm starting",
+      "body": "### Describe the bug\n\nWhen using multinomial logistic regression with warm starts from a previous iteration, the final coefficients in the model are correct, but the intercepts somehow get filled with incorrect numbers somewhere.\n\nAs a result, predictions from a warm-started model differ from those of a cold-start model that has more iterations on the same data.\n\nThe issue appears to have been introduced recently as it works fine with version 1.5, but not with 1.6 or 1.7.\n\n### Steps/Code to Reproduce\n\n```python\nimport numpy as np\nfrom sklearn.datasets import load_iris\nfrom sklearn.linear_model import LogisticRegression\nX, y = load_iris(return_X_y=True)\n\nmodel1 = LogisticRegression(\n    solver=\"newton-cholesky\",\n    max_iter=2\n).fit(X, y)\nmodel2 = LogisticRegression(\n    solver=\"newton-cholesky\",\n    max_iter=1,\n    warm_start=True\n).fit(X, y).fit(X, y)\n\nnp.testing.assert_almost_equal(\n    model1.coef_,\n    model2.coef_\n)\n\nnp.testing.assert_almost_equal(\n    model1.predict_proba(X[:5]),\n    model2.predict_proba(X[:5])\n)\n```\n\n### Expected Results\n\nIntercepts should be the same, up to shifting by a constant if needed.\n\n### Actual Results\n\nIntercepts are different, as are predicted probabilities\n\n### Versions\n\n```shell\nSystem:\n    python: 3.12.6 | packaged by conda-forge | (main, Sep 22 2024, 14:16:49) [GCC 13.3.0]\nexecutable: /home/david/miniforge3/bin/python\n   machine: Linux-6.12.33+deb12-amd64-x86_64-with-glibc2.36\n\nPython dependencies:\n      sklearn: 1.7.1\n          pip: 24.2\n   setuptools: 74.1.2\n        numpy: 2.0.1\n        scipy: 1.14.1\n       Cython: 3.1.0\n       pandas: 2.2.3\n   matplotlib: 3.9.2\n       joblib: 1.4.2\nthreadpoolctl: 3.5.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: blas\n   internal_api: openblas\n    num_threads: 20\n         prefix: libscipy_openblas\n       filepath: /home/david/.local/lib/python3.12/site-packages/numpy.libs/libscipy_openblas64_-99b71e71.so\n        version: 0.3.27\nthreading_layer: pthreads\n   architecture: Has...",
+      "labels": [
+        "Bug",
+        "module:linear_model"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-31T11:26:16Z",
+      "updated_at": "2025-08-11T08:18:13Z",
+      "comments": 14,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31859"
+    },
+    {
+      "number": 31849,
+      "title": "Extend make file to inlcude initial setup installations.",
+      "body": "### Describe the workflow you want to enable\n\nI recently made my first contribution to sklearn and found it a bit tidious to do the initial setup after cloning the repo. I think that extending the make file to include something similar to `make inital setup` to install the dependencies in [step 4 of the Contributing > Contributing code > How to contribute](https://scikit-learn.org/stable/developers/contributing.html) would be benefitial. Additionnaly adding a script ot run the git commands. I'd love to implement this so please, let me know if this is something of interest! \n\n### Describe your proposed solution\n\nExtending the make file to include something similar to `make inital setup` to install the dependencies in [step 4 of the Contributing > Contributing code > How to contribute](https://scikit-learn.org/stable/developers/contributing.html)\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-28T19:02:54Z",
+      "updated_at": "2025-07-29T07:40:22Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31849"
+    },
+    {
+      "number": 31840,
+      "title": "SkLearn IQR function",
+      "body": "### Describe the workflow you want to enable\n\nRecently, I was working on a machine learning project with a dataset that was quite skewed. I repeatedly had to compute the interquartile range (IQR), calculate the 25th and 75th percentiles, visualize the box plot, and then remove outliers — all manually.\n\nWhile this wasn't an issue at first, it became tedious to write the same code over and over again for different rows and columns. This made me wonder: Wouldn’t it be much more efficient if scikit-learn offered a built-in utility to calculate the IQR and optionally remove or flag outliers?\n\nI believe this kind of functionality could significantly streamline the preprocessing workflow for many users.\n\n### Describe your proposed solution\n\nI’d like to suggest adding a simple utility class to scikit-learn (or as part of a preprocessing module), called OutlierRemoval. This class would encapsulate all IQR-related preprocessing logic and expose a clean interface for users to apply it.\n\n```py\nclass OutlierRemoval:\n    def __init__(self, multiplier: float = 1.5):\n        # Multiplier for the IQR rule (default is 1.5)\n        ...\n\n    def get_q1(self, X, column):\n        # Returns the 25th percentile for a column\n        ...\n\n    def get_q3(self, X, column):\n        # Returns the 75th percentile for a column\n        ...\n\n    def calculate_iqr(self, X, column):\n        # Returns IQR = Q3 - Q1\n        ...\n\n    def plot_boxplot(self, X, column):\n        # Displays a boxplot for the column\n        ...\n\n    def remove_outliers(self, X, column):\n        # Removes rows with outliers from the dataset\n        ...\n```\n\nPrevents redundant code when handling outliers across multiple projects\n\nEncourages best practices in preprocessing pipelines\n\nMakes exploratory data analysis (EDA) cleaner and more intuitive\n\nAligns with scikit-learn’s emphasis on reusable, composable preprocessing tools\n\n### Describe alternatives you've considered, if relevant\n\nI've used pandas and numpy to manually calcu...",
+      "labels": [
+        "New Feature"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-27T03:39:59Z",
+      "updated_at": "2025-08-04T11:37:11Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31840"
+    },
+    {
+      "number": 31834,
+      "title": "Resource cleanup issues in dataset loaders: files opened but not closed.",
+      "body": "### Describe the bug\n\nTwo dataset loader functions in `sklearn.datasets` have resource cleanup issues where files are opened but not properly closed using context managers, potentially leading to resource leaks.\n\nThe first one is more important:\n### in _lfw.py:\nLine 172:  `pil_img = Image.open(file_path)` -  an image is opened each iteration of the loop.\nThe file handle is never explicitly closed. \nPIL does not always immediately close the file. This can exhaust file descriptors.\n\nThis one is less severe:\n### In _kddcup99.py:\nLines 390 - 394: The file is opened and manually closed using `file_.close()`, but not inside a `try`/`finally` or `with` block.\nfile_.close() appears after a loop without exceptions. This means that if an error occurs in the loop, the file remains open.\n\n### Steps/Code to Reproduce\n\nCode snippet shouldn't be necessary - \n### Primary Issue in _lfw.py\nOpening many images without closing can exhaust system file descriptors\nUnclosed file handles can prevent garbage collection\nApplications or notebooks that repeatedly fetch the dataset could accumulate thousands of unclosed files\n### Secondary Issue in _kddcup99.py\nIf line.decode() fails (encoding issues), file remains open.\nIf Xy.append() fails (memory constraints), file remains open.\nKeyboard interruption during process, file remains open.\n\n### Expected Results\n\nAll files should be opened using context managers, or \n```python\nwith Image.open(file_path) as pil_img:\n    # processing\n```\nensuring proper closure even if exceptions are raised. This ensures file handles are released immediately, and code is safe under interruption or failure.\n\n### Actual Results\n\nFiles are opened without being explicitly closed, leading to:\nExhaustion of file descriptors when loading the dataset multiple times, unexpected behavior under memory pressure or long sessions.\n\n### Versions\n\n```shell\nSystem:\n    python: 3.13.2 (tags/v3.13.2:4f8bb39, Feb  4 2025, 15:23:48) [MSC v.1942 64 bit (AMD64)]\nexecutable: C:python.exe\n ...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-25T01:30:26Z",
+      "updated_at": "2025-07-25T10:26:47Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31834"
+    },
+    {
+      "number": 31811,
+      "title": "Bug: StackingRegressor serialization error with custom neural network regressors (TabTransformer, ANN, DNN)",
+      "body": "### Describe the bug\n\nBug Report: StackingRegressor in scikit-learn Fails with Custom Neural Network Regressors\nDear scikit-learn Maintainers,\nI am Dr. Mohsen Jahan, Professor of Agroecology and Instructor of Artificial Intelligence and Digital Transformation at Ferdowsi University of Mashhad, Iran. While conducting a research project on multi-objective feature selection using the NSGA-III algorithm and stacking models, I encountered an issue with the StackingRegressor implementation in scikit-learn (version 1.5.2). Specifically, this module exhibits compatibility issues with custom regression models, particularly those based on neural networks such as TabTransformerRegressor, ANNRegressor, and DNNRegressor.\nIssue Description\nWhen using StackingRegressor in scikit-learn with custom regression models that adhere to the standard scikit-learn API (e.g., implementing fit and predict methods) but rely on complex internal structures (e.g., based on tensorflow or pytorch), serialization or cloning errors occur. These errors manifest particularly when such models are used as regressors or meta_regressor in StackingRegressor, affecting processes like GridSearchCV or model persistence with joblib. For instance, in our project, employing a custom SimpleDNNRegressor (built with tensorflow) as the meta-regressor in StackingRegressor resulted in serialization errors. This issue was not observed when using mlxtend.regressor.StackingRegressor (version 0.23.1), which handles custom models more robustly due to its more flexible cloning/serialization mechanisms.\nTechnical Details\n\nscikit-learn Version: 1.5.2\nAffected Models: TabTransformerRegressor, ANNRegressor, DNNRegressor, and likely other neural network-based regressors\nAffected Module: sklearn.ensemble.StackingRegressor\nObserved Errors:\nSerialization errors during GridSearchCV or model saving with joblib.\nIncompatibility with custom models leveraging external libraries (e.g., tensorflow).\n\n\nWorkaround: Using mlxtend.regressor.St...",
+      "labels": [
+        "Bug",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-22T04:57:19Z",
+      "updated_at": "2025-07-22T04:57:59Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31811"
+    },
+    {
+      "number": 31810,
+      "title": "CI: Enable GitHub Actions App for ppc64le (Power architecture) support",
+      "body": "Hi scikit-learn team,\n\nWe’re reaching out to propose enabling CI support for the ppc64le (IBM Power) architecture in your repository, as part of a broader effort to ensure cross-platform compatibility in the scientific Python ecosystem.\n\nWe’re using a GitHub Actions (GHA)-based runner service provided and maintained by IBM to run jobs for the ppc64le architecture. This setup has already been successfully integrated into projects like:\n\n✅ [cryptography](https://github.com/pyca/cryptography/issues/13086)\n\n📌 [Tracking issue in NumPy](https://github.com/numpy/numpy/issues/29125)\n\nWe’d now like to propose enabling the GitHub Actions app in this repository to allow running CI jobs for ppc64le directly via GitHub Actions. This would support upstream compatibility and help ensure continued support for the Power architecture in scikit-learn.\n\nKey Benefits:\n🔒 Ephemeral and secure runners, isolated per job\n\n🛠️ Maintained by IBM, requires no setup effort from your side\n\n🔁 Integrates with existing GitHub Actions workflows\n\n📚 Technical documentation and usage details:\nhttps://github.com/IBM/actionspz/tree/main/docs\n\nWe’re happy to assist with the setup or provide any additional details the team may need.\n\nThanks so much!",
+      "labels": [
+        "Build / CI",
+        "Needs Decision"
+      ],
+      "state": "open",
+      "created_at": "2025-07-21T17:36:40Z",
+      "updated_at": "2025-08-13T08:53:27Z",
+      "comments": 12,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31810"
+    },
+    {
+      "number": 31808,
+      "title": "Handle new `pd.StringDtype` that is coming in pandas 3",
+      "body": "This issue is the result of investigating https://github.com/scikit-learn/scikit-learn/issues/31778\n\nThe failures in the nightlies are due to changes coming in pandas 3.0. In particular the switch to using `StringDtype` as the type for string columns. The old behaviour was to use `object`.\n\nThis has a few effects:\n- can no longer use `np.issubdtype` because the new dtype isn't one known to numpy\n- selecting columns in `ColumnTransformer` doesn't select the right columns anymore\n\nThese are the failing tests:\n```\nFAILED compose/tests/test_column_transformer.py::test_make_column_transformer_pandas - TypeError: Cannot interpret '<StringDtype(storage='python', na_value=nan)>'...\nFAILED compose/tests/test_column_transformer.py::test_column_transformer_remainder_pandas[pd-index-expected_cols4] - TypeError: Cannot interpret '<StringDtype(storage='python', na_value=nan)>'...\nFAILED compose/tests/test_column_transformer.py::test_make_column_selector_with_select_dtypes[cols1-None-None-object] - AssertionError: \nFAILED compose/tests/test_column_transformer.py::test_make_column_selector_with_select_dtypes[cols3-None-include3-None] - AssertionError: \nFAILED compose/tests/test_column_transformer.py::test_make_column_selector_with_select_dtypes[cols4-None-object-None] - AssertionError: \nFAILED compose/tests/test_column_transformer.py::test_make_column_selector_with_select_dtypes[cols12-None-include12-None] - AssertionError: \nFAILED compose/tests/test_column_transformer.py::test_column_transformer_with_make_column_selector - AssertionError: \nFAILED preprocessing/tests/test_encoders.py::test_encoder_dtypes_pandas - assert False\nFAILED preprocessing/tests/test_function_transformer.py::test_function_transformer_with_dataframe_and_check_inverse_True - TypeError: Cannot interpret '<StringDtype(storage='python', na_value=nan)>'...\n```\n\nThree of these (first one and last two) are due to using `issubdtype`. The other failures are due to not selecting the right columns (n.b. the way the test...",
+      "labels": [
+        "Enhancement",
+        "Moderate",
+        "module:compose",
+        "module:preprocessing",
+        "Pandas compatibility"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-21T12:21:44Z",
+      "updated_at": "2025-07-23T05:51:08Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31808"
+    },
+    {
+      "number": 31806,
+      "title": "⚠️ CI failed on Linux_Runs.pylatest_conda_forge_mkl (last failure: Jul 21, 2025) ⚠️",
+      "body": "CI failed on [Linux_Runs.pylatest_conda_forge_mkl](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78376&view=logs&j=dde5042c-7464-5d47-9507-31bdd2ee0a3a) (Jul 21, 2025)\n\nTest Collection Failure",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-21T08:34:55Z",
+      "updated_at": "2025-07-21T08:35:47Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31806"
+    },
+    {
+      "number": 31804,
+      "title": "DOC metadata docstrings generator has wrong indentation",
+      "body": "### Describe the issue linked to the documentation\n\nI am a maintainer of a third party package [fastcan](https://github.com/scikit-learn-contrib/fastcan).\n\nAfter I update the scikit-learn version from 1.7.0 to 1.7.1, the Sphinx document generation gives the following error.\n\n```\nParameters\n---------- [docutils]\n<SOME PY SCRIPT>:docstring of sklearn.utils._metadata_requests.RequestMethod.__get__.<locals>.func:38: CRITICAL: Unexpected section title.\n```\n\nThe raw error log of readthedocs build can be found [here](https://app.readthedocs.org/api/v2/build/28919247.txt).\n\nIt is suspected the error is caused by the wrong indentation in `sklearn.utils._metadata_requests.py` as below.\n\n```python\nREQUESTER_DOC = \"\"\"\nConfigure whether metadata should be requested to be passed to the ``{method}`` method.\n```\n\n### Suggest a potential alternative/fix\n\nThe correct indentation should be as below\n\n```python\nREQUESTER_DOC = \"\"\"        Configure whether metadata should be requested to be \\\npassed to the ``{method}`` method.\n```\n\nI am not sure why the official documents of scikit-learn does not have this error. However, at least for consistence with `REQUESTER_DOC_PARAM` and `REQUESTER_DOC_RETURN`, which have 8 spaces indentation, `REQUESTER_DOC` should also have 8 spaces indentation.",
+      "labels": [
+        "Documentation",
+        "Metadata Routing"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-21T06:30:14Z",
+      "updated_at": "2025-07-22T05:53:37Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31804"
+    },
+    {
+      "number": 31799,
+      "title": "⚠️ CI failed on Linux_Runs.pylatest_conda_forge_mkl (last failure: Jul 21, 2025) ⚠️",
+      "body": "**CI failed on [Linux_Runs.pylatest_conda_forge_mkl](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78376&view=logs&j=dde5042c-7464-5d47-9507-31bdd2ee0a3a)** (Jul 21, 2025)\n- Test Collection Failure",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-21T02:33:56Z",
+      "updated_at": "2025-07-22T08:37:38Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31799"
+    },
+    {
+      "number": 31789,
+      "title": "⚠️ CI failed on Wheel builder (last failure: Jul 19, 2025) ⚠️",
+      "body": "**CI failed on [Wheel builder](https://github.com/scikit-learn/scikit-learn/actions/runs/16384706430)** (Jul 19, 2025)",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-19T04:25:21Z",
+      "updated_at": "2025-07-20T04:53:11Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31789"
+    },
+    {
+      "number": 31781,
+      "title": "Documentation may be inaccurate regarding deprecation of `multi_class` in LogisticRegression",
+      "body": "### Describe the issue linked to the documentation\n\nIn the documentation for `LogisticRegression`  under `multi_class`, there is a [note:](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html#:~:text=Deprecated%20since%20version%201.5%3A%20multi_class%20was%20deprecated%20in%20version%201.5%20and%20will%20be%20removed%20in%201.7.) \n\"Deprecated since version 1.5: `multi_class` was deprecated in version 1.5 and will be removed in 1.7. \" \n\nHowever, I think this will be removed in version 1.8, based on this PR: https://github.com/scikit-learn/scikit-learn/pull/31241\n\n\n### Suggest a potential alternative/fix\n\nChange the docs to 1.8 version - if that is correct.",
+      "labels": [
+        "Documentation",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-18T08:39:11Z",
+      "updated_at": "2025-07-21T09:05:36Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31781"
+    },
+    {
+      "number": 31776,
+      "title": "Documentation Bug: Warning about \"unstable development version\"",
+      "body": "### Describe the issue linked to the documentation\n\nWhen browsing the scikit-learn documentation, I selected a stable version (e.g., 1.7.0) from the versions. However, I still see the warning banner at the top of the page: **This is documentation for an unstable development version.**\n\nThis is a bit confusing, as I'm clearly viewing a stable release. \n\n<img width=\"1748\" height=\"830\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/3e236cbb-31cd-4e77-aead-05cdee6408c9\" />\n\n### Suggest a potential alternative/fix\n\n_No response_",
+      "labels": [
+        "Bug",
+        "Documentation"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-17T14:02:05Z",
+      "updated_at": "2025-07-18T09:28:38Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31776"
+    },
+    {
+      "number": 31773,
+      "title": "Anaconda new ToS causing CI failures",
+      "body": "New Anaconda ToS: https://www.anaconda.com/legal/terms/terms-of-service , effective 15 July 2025, is causing the follow error in our CIs:\n\n```\nCondaToSNonInteractiveError: Terms of Service have not been accepted for the following channels. Please accept or remove them before proceeding:\n    • https://repo.anaconda.com/pkgs/main\n    • https://repo.anaconda.com/pkgs/r\n\nTo accept a channel's Terms of Service, run the following and replace `CHANNEL` with the channel name/URL:\n    ‣ conda tos accept --override-channels --channel CHANNEL\n\nTo remove channels with rejected Terms of Service, run the following and replace `CHANNEL` with the channel name/URL:\n    ‣ conda config --remove channels CHANNEL\n```\n\nWe can use [`conda-anaconda-tos`](https://www.anaconda.com/docs/getting-started/tos-plugin) or potentially switch to miniforge ?\n\n@scikit-learn/core-devs @scikit-learn/communication-team @scikit-learn/documentation-team \n\n(Of interest here is corresponding issue in pytorch https://github.com/pytorch/pytorch/issues/158438)",
+      "labels": [
+        "High Priority"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-17T03:36:55Z",
+      "updated_at": "2025-07-22T21:50:54Z",
+      "comments": 20,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31773"
+    },
+    {
+      "number": 31769,
+      "title": "⚠️ CI failed on Linux_Nightly.pylatest_pip_scipy_dev (last failure: Jul 16, 2025) ⚠️",
+      "body": "**CI failed on [Linux_Nightly.pylatest_pip_scipy_dev](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78222&view=logs&j=dfe99b15-50db-5d7b-b1e9-4105c42527cf)** (Jul 16, 2025)\nUnable to find junit file. Please see link for details.",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-16T02:33:49Z",
+      "updated_at": "2025-07-16T15:13:39Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31769"
+    },
+    {
+      "number": 31768,
+      "title": "⚠️ CI failed on Ubuntu_Jammy_Jellyfish.pymin_conda_forge_openblas_ubuntu_2204 (last failure: Jul 16, 2025) ⚠️",
+      "body": "**CI failed on [Ubuntu_Jammy_Jellyfish.pymin_conda_forge_openblas_ubuntu_2204](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78222&view=logs&j=f71949a9-f9d9-549e-cf45-2e99c7b412d1)** (Jul 16, 2025)\nUnable to find junit file. Please see link for details.",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-16T02:33:33Z",
+      "updated_at": "2025-07-16T15:13:38Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31768"
+    },
+    {
+      "number": 31767,
+      "title": "⚠️ CI failed on Linux_free_threaded.pylatest_free_threaded (last failure: Jul 16, 2025) ⚠️",
+      "body": "**CI failed on [Linux_free_threaded.pylatest_free_threaded](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78222&view=logs&j=c10228e9-6cf7-5c29-593f-d74f893ca1bd)** (Jul 16, 2025)\nUnable to find junit file. Please see link for details.",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-16T02:33:26Z",
+      "updated_at": "2025-07-16T15:13:38Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31767"
+    },
+    {
+      "number": 31766,
+      "title": "⚠️ CI failed on Linux_Runs.pylatest_conda_forge_mkl (last failure: Jul 16, 2025) ⚠️",
+      "body": "**CI failed on [Linux_Runs.pylatest_conda_forge_mkl](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78222&view=logs&j=dde5042c-7464-5d47-9507-31bdd2ee0a3a)** (Jul 16, 2025)\nUnable to find junit file. Please see link for details.",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-16T02:32:08Z",
+      "updated_at": "2025-07-16T15:13:38Z",
+      "comments": 0,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31766"
+    },
+    {
+      "number": 31761,
+      "title": "y_pred changed to y_true in RocCurveDisplay.from_predictions, but not in DetCurveDisplay.from_predictions",
+      "body": "The parameter `y_pred` was deprecated in `RocCurveDisplay.from_predictions` and replaced by `y_score`. Although the  `y_pred` parameter in `DetCurveDisplay.from_predictions`  has an identical docstring (except for details about the name change), it was not renamed. \n\nIt seems to me that both signatures should match in that regard.\n\nI'm not sure if it applies to other binary display parameters, but this relates to https://github.com/scikit-learn/scikit-learn/issues/30717.",
+      "labels": [
+        "API"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-15T14:23:05Z",
+      "updated_at": "2025-07-25T18:14:15Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31761"
+    },
+    {
+      "number": 31754,
+      "title": "In Balltree, filter out/mask specific points in query",
+      "body": "### Describe the workflow you want to enable\n\nI would like to be able to query nearest points within a Balltree but excluding some of them.\nE.g. I create a Balltree on 60k points. I want to find the k nearest neighbour points but within a subset of the 60k points. \nExample case: I have N clusters of points. I build a Balltree with all the points of the N clusters (e.g. 60k points). Then I want to find for each of the points of a given cluster the closest point from the other clusters (i.e. excluding itself).\n\n### Describe your proposed solution\n\n I would like to pass an extra mask argument (e.g. array of 60k elements) to the query with True for the points in the other clusters and False for the points in the specific cluster.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-13T20:32:13Z",
+      "updated_at": "2025-07-30T15:13:44Z",
+      "comments": 6,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31754"
+    },
+    {
+      "number": 31750,
+      "title": "Full Python/sklearn Adaptation of py-earth",
+      "body": "### Describe the workflow you want to enable\n\nA full Python (not c or cython) port of py-earth, an archived sklearn project.\n\n### Describe your proposed solution\n\n- MARS regression is a great and really practical technique.\n- py-earth implemented this, based in the R earth library.\n- The archived state of py-earth means it's only possible to get working with old dependencies which limits the ability to use it with newer tools and in more current workflows..\n\n### Describe alternatives you've considered, if relevant\n\n- I tried to modernise py-earth, but got tripped up on lots of issues such as Python 2 to 3 conversion, the old scipy dependencies etc.\n- py-earth was mostly consistent with sklearn, but not completely.\n- I've created a full Python port (repo still private, as the repo is still a bit messy), as a secondary output of my PhD.\n- I would like to try introduce it as a 'spiritual' successor to py-earth and collaborate with the sklearn community.\n- Keen to get some guidance on approaching this, as I'm relatively new to contributing.\n\n### Additional context\n\n- For policy and decision contexts, the stepwise linear approach and combination of a visualisable model and change points, means MARS regression has advantages over other modelling methods.\n- For changepoint analysis involving gradients, MARS is easier and nicer to work with than PELT-based changepoints (ruptures).\n- What this means is that in sklearn workflows, it's potentially a useful prediction method for decision-analysis and forecasting.\n- Whilst the performance of the resulting models may not be as good as other techniques, that's made up for by the advantage of explainability and the adaptive approach.",
+      "labels": [
+        "New Feature",
+        "Needs Decision"
+      ],
+      "state": "open",
+      "created_at": "2025-07-13T01:27:13Z",
+      "updated_at": "2025-07-16T12:39:42Z",
+      "comments": 8,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31750"
+    },
+    {
+      "number": 31738,
+      "title": "Present parameters and attributes sorted alphabetically to make it easier to find them on the documentation pages.",
+      "body": "### Describe the issue linked to the documentation\n\n## Example\nOn documentation page https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html the parameters are listed out of order, with \"hidden_layer_sizes\" being shown at the top, followed by \"activation\", that should be the first parameters among the three visible on this screenshot. The \"solver\" parameter is kind of better positioned than the other two, but it's actually not well positioned at all, because after it we have the \"alpha\" parameter, which should be at the top of the list since it starts with \"a\". \"batch_size\" should appear after the parameters that start with \"a\", and so on.\n\n<img width=\"992\" height=\"862\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/74910bb8-3c5f-41db-ba5d-f78e09a40c14\" />\n\n### Suggest a potential alternative/fix\n\nSort the parameters and attributes alphabetically by name before presenting them on the documentation pages.",
+      "labels": [
+        "Documentation"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-10T23:50:59Z",
+      "updated_at": "2025-07-31T06:50:16Z",
+      "comments": 4,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31738"
+    },
+    {
+      "number": 31733,
+      "title": "Add More Data to the RidgeCV, LassoCV, and ElasticNetCV Path",
+      "body": "### Describe the workflow you want to enable\n\nCurrently, the mse_path_ is available from the above models, which lets you inspect/plot the mse for all folds, alphas, and l1_ratios for elasticnet for instance. It would be very nice to record not only the mse in this way, but also the coefficients and possibly the in-sample/validation score.\n\n### Describe your proposed solution\n\nAdd variables that include the coefficients and maybe the score.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\n_No response_",
+      "labels": [
+        "New Feature",
+        "spam",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-09T19:53:32Z",
+      "updated_at": "2025-07-10T03:56:41Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31733"
+    },
+    {
+      "number": 31731,
+      "title": "`scipy.minimize(method=’L-BFGS-B’)` deprecation warning for `iprint` and `disp` arguments",
+      "body": "### Describe the bug\n\nWhen upgrading to scipy 1.16, fitting a LogisticRegression raises a deprecation warning:\n\n```\nDeprecationWarning: scipy.optimize: The `disp` and `iprint` options of the L-BFGS-B solver are deprecated and will be removed in SciPy 1.18.0.\n```\n\nThe [documentation page of scipy.minimize](https://docs.scipy.org/doc/scipy-1.16.0/reference/optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb) mentions this double deprecation.\n\n### Steps/Code to Reproduce\n\n`python -Wd`\n```python\n>>> from sklearn.linear_model import LogisticRegression\n>>> import numpy as np\n>>> X = np.array([[1], [0]])\n>>> y = np.array([1, 0])\n>>> LogisticRegression().fit(X, y)\nDeprecationWarning: scipy.optimize: The `disp` and `iprint` options of the L-BFGS-B solver are deprecated and will be removed in SciPy 1.18.0.\n  opt_res = optimize.minimize(\n```\n\n### Expected Results\n\nNo deprecation warning\n\n### Actual Results\n\nSee above\n\n### Versions\n\n```shell\nSystem:\n    python: 3.12.4 (main, Jul 25 2024, 22:11:22) [Clang 18.1.8 ]\nexecutable: /Users/vincentmaladiere/dev/inria/skrub/.venv/bin/python\n   machine: macOS-14.0-arm64-arm-64bit\n\nPython dependencies:\n      sklearn: 1.7.0\n          pip: None\n   setuptools: 80.9.0\n        numpy: 2.3.1\n        scipy: 1.16.0\n       Cython: None\n       pandas: 2.3.1\n   matplotlib: 3.10.3\n       joblib: 1.5.1\nthreadpoolctl: 3.6.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: openmp\n   internal_api: openmp\n    num_threads: 8\n         prefix: libomp\n       filepath: /Users/vincentmaladiere/dev/inria/skrub/.venv/lib/python3.12/site-packages/sklearn/.dylibs/libomp.dylib\n        version: None\n```",
+      "labels": [
+        "Bug"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-09T13:32:38Z",
+      "updated_at": "2025-07-09T14:25:27Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31731"
+    },
+    {
+      "number": 31728,
+      "title": "Making the extension contract stable through version upgrades",
+      "body": "### Describe the workflow you want to enable\n\nCurrently, every time `scikit-learn` releases a new minor version - e.g., 1.5.0, 1.6.0, 1.7.0 - compliant extensions, e.g., custom transformers, classifiers, etc, break - specifically, referring to the API conformance as tested through `check_estimator` or `parametrize_with_checks`.\n\nThese repeated breakages in the \"extender contract\" contrast the stability of the usage contract, which is stable and professionally managed.\n\nFor a package like `scikit-learn` which means to be a standard not just for ML algorithms but also an API standard that everyone uses, this is not a good state to be in - \"do not break user code\" is the maxim that gets broken for power users writing extensions.\n\nOf course maintaining downwards compatibility is not always possible, but nothing should break without a proper warning.\n\n### Describe your proposed solution\n\nThe main reason imo why this keeps happening is that `scikit-learn` is not using a proper pattern that ensures stability of the extension contract - and also no secondary deprecation patterns in relation to it.\n\nA simple pattern that could improve a lot would be the \"template pattern\", in a specific form to separate likely changing parts such as the boilerplate (e.g., `validate_data` vs `_validate_data` and such) from the extension locus.\nReference: https://refactoring.guru/design-patterns/template-method\n\nExamples of how this can be used to improve stability:\n\n* `sktime`, for a different API, has a separation between `fit` calling an internal `_fit`, where change-prone boilerplate is sandwiched between a stable user contract (`fit`) and a stable extender contract (`_fit`); similarly `predict` and `_predict`\n* `feature-engine` overrides the `BaseTransformer` `scikit-learn` extension contract with a similar pattern using `super()` calls in `fit` etc.\n\nIn particular the `fit`/`_fit` pairing that combines strategy and template pattern can be introduced easily via pure internal refactoring -...",
+      "labels": [
+        "New Feature",
+        "Developer API"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-09T10:26:51Z",
+      "updated_at": "2025-08-09T22:03:07Z",
+      "comments": 13,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31728"
+    },
+    {
+      "number": 31725,
+      "title": "Confusion around coef_ and intercept_ for Polynomial Ridge Regression inside a Pipeline",
+      "body": "### Describe the issue linked to the documentation\n\nWhen using a Pipeline with PolynomialFeatures and Ridge, it's unclear in the documentation how to extract the actual model coefficients and intercept to reproduce the regression equation manually (outside scikit-learn).\n\nFor example, when fitting a polynomial regression with:\n\nmake_pipeline(PolynomialFeatures(degree=3), Ridge())\n\nMost users wrongly assume that coef_[0] is the intercept, which it is not. This behavior is not explained clearly in the Ridge or Pipeline documentation and led to confusion even after reading the docs and searching online.\n\nThis is a common use case — for example, when exporting trained models to plain Python, Java, or C++.\n\n### Suggest a potential alternative/fix\n\n### ✅ Suggested Fix\n\n\nThe coefficients returned by `.coef_` include the weight for the constant basis function (created by `PolynomialFeatures`), but the actual y-intercept is stored separately in `.intercept_`. This makes it unclear how to reconstruct an equation like:\n\ny = a·x³ + b·x² + c·x + d\n\n### Suggested Fix:\n\n1. In the `Ridge`, `Pipeline`, and/or `PolynomialFeatures` documentation, add a clear explanation that:\n   - `PolynomialFeatures(degree=n)` creates features `[1, x, x², ..., xⁿ]`\n   - The intercept is **not** included in `.coef_`, but is returned separately as `.intercept_`\n   - The first element of `.coef_` corresponds to the coefficient of the constant term `1`, not the model intercept\n\n2. Provided a code snippet that reconstructs the polynomial using both:\n\n```python\ncoefs = model.named_steps['ridge'].coef_\nintercept = model.named_steps['ridge'].intercept_\n```\n\nThis change would help students and developers trying to reproduce the regression manually in another language or platform.",
+      "labels": [
+        "Documentation",
+        "spam",
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-09T04:41:13Z",
+      "updated_at": "2025-07-26T16:03:23Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31725"
+    },
+    {
+      "number": 31724,
+      "title": "⚠️ CI failed on Linux_Runs.pylatest_conda_forge_mkl (last failure: Jul 09, 2025) ⚠️",
+      "body": "**CI failed on [Linux_Runs.pylatest_conda_forge_mkl](https://dev.azure.com/scikit-learn/scikit-learn/_build/results?buildId=78075&view=logs&j=dde5042c-7464-5d47-9507-31bdd2ee0a3a)** (Jul 09, 2025)\n- Test Collection Failure",
+      "labels": [
+        "Needs Triage"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-09T02:34:25Z",
+      "updated_at": "2025-07-10T13:07:08Z",
+      "comments": 1,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31724"
+    },
+    {
+      "number": 31722,
+      "title": "`test_unsorted_indices` for `SVC` may fail randomly with sparse vs dense data",
+      "body": "### Describe the bug\n\nThe [<code>test_unsorted_indices</code>](https://github.com/scikit-learn/scikit-learn/blob/cfd5f7833dfb3794e711e79e4a3373e599d5a1f0/sklearn/svm/tests/test_sparse.py#L121) function occasionally fails on CI when comparing the coefficients of `SVC(kernel=\"linear\", probability=True, random_state=0)` trained on dense vs sparse data.\n\nI suspect this is due to additional randomness introduced by the internal cross-validation and Platt scaling when `probability=True` is set. See the [SVC documentation](https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html) for reference.\n\n### Steps/Code to Reproduce\n\nUnfortunately, I haven't been able to reproduce the failure reliably. I've only seen it fail three times when creating or reviewing PRs, but the error disappears after re-running CI.\n\nI've also tried looping through various `random_state` values without triggering a failure locally.\n\nFor now, I'm labelling this with \"Hard\" and \"Needs Reproducible Code.\"\n\n### Expected Results\n\n```python\ndef test_unsorted_indices(csr_container):\n    # test that the result with sorted and unsorted indices in csr is the same\n    # we use a subset of digits as iris, blobs or make_classification didn't\n    # show the problem\n    X, y = load_digits(return_X_y=True)\n    X_test = csr_container(X[50:100])\n    X, y = X[:50], y[:50]\n    tols = dict(rtol=1e-12, atol=1e-14)\n\n    X_sparse = csr_container(X)\n    coef_dense = (\n        svm.SVC(kernel=\"linear\", probability=True, random_state=0).fit(X, y).coef_\n    )\n    sparse_svc = svm.SVC(kernel=\"linear\", probability=True, random_state=0).fit(\n        X_sparse, y\n    )\n    coef_sorted = sparse_svc.coef_\n    # make sure dense and sparse SVM give the same result\n    assert_allclose(coef_dense, coef_sorted.toarray(), **tols)\n```\nshould consistently pass.\n\n### Actual Results\n\nIn rare cases, the assertion fails:\n\n```console\nAssertionError: \nNot equal to tolerance rtol=1e-07, atol=0       \nMismatched elements: 2 / 2880 (0.0694%...",
+      "labels": [
+        "Bug",
+        "Hard",
+        "module:svm",
+        "Needs Reproducible Code"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-08T00:16:35Z",
+      "updated_at": "2025-07-08T20:05:39Z",
+      "comments": 3,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31722"
+    },
+    {
+      "number": 31719,
+      "title": "What are the coefficients returned by Polynomial Ridge Regression (or any regression)?",
+      "body": "### Describe the issue linked to the documentation\n\nI asked and answered a question about Regression in [Stack Overflow](https://stackoverflow.com/questions/79691953/ridge-polynomial-regression-how-to-get-parameters-for-equation-found).  Here is a summary and question.\n\nI ran several regressions using pipeline and gridsearch.  The winning regression was polynomial ridge regression.  What I then wanted to do was extract the coefficients of the successful regression so I could pass them on for an implementation that uses just python (no libraries) and Java (no libraries).  That was not straightforward.\n\nI eventually found the coefficients under `steps` after someone pointed that out.  Even the answers I got on Google indicated they were under the attribute `coef` but I couldn't find them though I thought I had read the docs sufficiently.\n\nAs explained at the link above, I expected coefficients for an equation: `a + bx + cx^2 + dx^3`.  If I looked at the coefficients under the attribute `coef_` I got: `[ 0.00000000e+00  9.17291774e-01 -4.25186367e-09  9.06355625e-18]`, from which I assumed that meant that `a=0`,` b=9.17291774e-01`, etc.  It turned out that was only partially true, `b-d` are correct but `a` is not.  `a` is actually the interecept which is another attribute `intercept_`.  At least, that is how I got things to work (code below for an example)\n\nQuestion:  what is the first element in the coefficients from Polynomial Ridge Regression or have I completely misunderstood?\n\n```\nimport pandas as pd\nimport warnings\n\n# regression libs\nfrom sklearn.pipeline import make_pipeline\nfrom sklearn.linear_model import Ridge\nfrom sklearn.pipeline import Pipeline\nfrom sklearn.preprocessing import PolynomialFeatures\n\n# useful initializations\nwarnings.filterwarnings('ignore')\n\np = [0, 10, -20, .30]\n\n# Create fake data using the preceding coefficients with some noise\ndef regr_noise(x, p):\n    mu = np.random.uniform(0,50E6)\n    return (p[0] + p[1]*x + p[2]*x**2 + p[3]*x**3 + mu)...",
+      "labels": [
+        "Documentation"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-07T19:24:47Z",
+      "updated_at": "2025-07-09T13:38:43Z",
+      "comments": 5,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31719"
+    },
+    {
+      "number": 31717,
+      "title": "SimpleImputer fails in \"most_frequent\" if incomparable types only if ties",
+      "body": "### Describe the bug\n\n### Observed behavior\n\nWhen using the \"most_frequent\" strategy from SimpleImputer and there is a tie, the code takes the minimum values among all ties. This crashes if the values are not comparable such as `str` and `NoneType`.\n\n### Steps/Code to Reproduce\n\n```python\nimport numpy as np\nfrom sklearn.impute import SimpleImputer\n\n\nX1 = np.asarray(['a', None])[:, None]\nX2 = np.asarray(['a', None, None])[:, None]\n\nimputer = SimpleImputer(add_indicator=True, strategy=\"most_frequent\")\n\ntry:\n    imputer.fit_transform(X1)\n    print('X1 processed successfully')\nexcept Exception as e:\n    print('Error while processing X1:', e)\n\n\ntry:\n    imputer.fit_transform(X2)\n    print('X2 processed successfully')\nexcept Exception as e:\n    print('Error while processing X2:', e)\n```\n\n### Expected Results\n\nI would expect the Imputer to have a consistant behavior not depending on whether or not a tie is presente. Namely:\n* Run whether or not values are comparable\n* Crashes if values are not comparable, wheter there is a tie or not.\n\nNote that the code claims to process data like `scipy.stats.mode` but `mode` only processes numeric values since scipy 1.9.0, it therefore crashed on this example and redirect the user toward `np.unique`:\n\n```\nTraceback (most recent call last):\n  File \"/Users/aabraham/NeuralkFoundry/tutorials/repro.py\", line 11, in <module>\n    print(scipy.stats.mode(X1))\n          ~~~~~~~~~~~~~~~~^^^^\n  File \"/Users/aabraham/.local/share/mamba/envs/skle/lib/python3.13/site-packages/scipy/stats/_axis_nan_policy.py\", line 611, in axis_nan_policy_wrapper\n    res = hypotest_fun_out(*samples, axis=axis, **kwds)\n  File \"/Users/aabraham/.local/share/mamba/envs/skle/lib/python3.13/site-packages/scipy/stats/_stats_py.py\", line 567, in mode\n    raise TypeError(message)\nTypeError: Argument `a` is not recognized as numeric. Support for input that cannot be coerced to a numeric array was deprecated in SciPy 1.9.0 and removed in SciPy 1.11.0. Please consider `np.unique`....",
+      "labels": [
+        "Bug"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-07T09:43:04Z",
+      "updated_at": "2025-08-21T15:18:34Z",
+      "comments": 19,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31717"
+    },
+    {
+      "number": 31708,
+      "title": "Frisch-Newton Interior Point Solver for Quantile Regression",
+      "body": "### Describe the workflow you want to enable\n\nHi @ scikit-learn devs! \n\nOver at [pyfixest](https://github.com/py-econometrics/pyfixest), we have implemented a Frisch-Newton Interior Point solver to fit quantile regressions. The algorithm goes back to work from Koenker. In practice, we have followed Koenker and Ng [\"A Frisch-Newton Algorithm for Sparse Quantile Regression\". ](https://link.springer.com/article/10.1007/s10255-005-0231-1)\n\nThe code is licensed under MIT and available [here](https://github.com/py-econometrics/pyfixest/blob/master/pyfixest/estimation/quantreg/frisch_newton_ip.py#L70). \n\nWe (@apoorvalal) have collected some benchmarks [here](https://gist.github.com/apoorvalal/3e18eea79c6e9e8e8ee380e0fc0bab1f) - the FN solver seems to outperform the scikit default solver by an order of a magnitude.  \n\n<img width=\"1362\" height=\"534\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f25eb315-60d8-464f-80f8-bf1c6aedce3b\" />\n\nWould you be interested in a PR that adds the FN solver as a new estimation method to the quantile regression class? \n\nWe've also implemented algorithms from [Chernozhukov et al ](https://arxiv.org/abs/1909.05782)that can drastically speed up estimation of the entire **quantile regression process**. \n\nAll the best, Alex\n\n### Describe your proposed solution\n\nI open a PR and add a new solver \"fn\" to `QuantileRegressor`.\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\nRelated to https://github.com/scikit-learn/scikit-learn/issues/20132",
+      "labels": [
+        "New Feature",
+        "Needs Decision - Include Feature"
+      ],
+      "state": "open",
+      "created_at": "2025-07-05T10:00:37Z",
+      "updated_at": "2025-09-09T15:27:32Z",
+      "comments": 17,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31708"
+    },
+    {
+      "number": 31705,
+      "title": "EmpiricalCovariance user guide assume_centered tip incorrect",
+      "body": "### Describe the issue linked to the documentation\n\nThe [user guide documentation](https://scikit-learn.org/stable/modules/covariance.html#empirical-covariance) for EmpiricalCovariance currently states:\n\n> More precisely, if `assume_centered=False`, then the test set is supposed to have the same mean vector as the training set. If not, both should be centered by the user, and `assume_centered=True` should be used.\n\nIt doesn't make sense, however, that `assume_centered=False` would require data to be centered.  Likewise, it would seem that the user would need to center the data OR use `assume_centered=True` -- not both.\n\nAdditionally, it doesn't seem like there are separate training and testing data for this.\n\n### Suggest a potential alternative/fix\n\nI think it should read:\n\n>More precisely, if `assume_centered=True`, then the data set's mean vector should be zero. If not, the data should be centered by the user, or `assume_centered=False` should be used.",
+      "labels": [
+        "Documentation"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-04T20:46:17Z",
+      "updated_at": "2025-07-22T12:30:14Z",
+      "comments": 2,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31705"
+    },
+    {
+      "number": 31700,
+      "title": "Pipelines are permitted to have no steps and are displayed as fitted",
+      "body": "### Describe the bug\n\nPipeline without defined steps is displayed in HTML as fitted.  \n\n\n\n\n### Steps/Code to Reproduce\n\n\n```\nfrom sklearn.pipeline import Pipeline\n\npipe = Pipeline([])\n\npipe\n```\n\n### Expected Results\n\nMaybe empty list should not be accepted. And it should rise a ValueError with a message asking to add steps.\n\n\n\n\n### Actual Results\n\nUsing vscode jupyter extension:\n\n<img width=\"401\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/f0ad0033-1b86-4a91-a30b-969a5d2ea22e\" />\n\nNote: Accepting an empty list is one issue, and showing that it is fitted is another.\nThe former occurs when a `Pipeline` is initialized. The latter, I believe, is a design flaw in `sklearn/utils/_repr_html/estimator.py.`\n\n### Versions\n\n```shell\nSystem:\n    python: 3.12.2 (v3.12.2:6abddd9f6a, Feb  6 2024, 17:02:06) [Clang 13.0.0 (clang-1300.0.29.30)]\nexecutable: /Users/dealeon/projects/scikit-learn/sklearn-env/bin/python\n   machine: macOS-15.5-arm64-arm-64bit\n\nPython dependencies:\n      sklearn: 1.8.dev0\n          pip: 25.1\n   setuptools: 75.8.0\n        numpy: 2.1.1\n        scipy: 1.14.1\n       Cython: 3.0.11\n       pandas: 2.2.3\n   matplotlib: 3.9.2\n       joblib: 1.4.2\nthreadpoolctl: 3.5.0\n\nBuilt with OpenMP: True\n\nthreadpoolctl info:\n       user_api: openmp\n   internal_api: openmp\n    num_threads: 8\n         prefix: libomp\n       filepath: /opt/homebrew/Cellar/libomp/19.1.7/lib/libomp.dylib\n        version: None\n```",
+      "labels": [
+        "Bug"
+      ],
+      "state": "closed",
+      "created_at": "2025-07-04T09:24:26Z",
+      "updated_at": "2025-07-14T13:02:42Z",
+      "comments": 11,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31700"
+    },
+    {
+      "number": 31679,
+      "title": "AI tools like Copilot Coding Agent don't know about / don't respect our Automated Contributions Policy",
+      "body": "(I am creating an issue to a PR already opened (#31643), because there are many more ways to solve the problem.)\n\nAI tools many people use to create PRs don't care about our [Automated Contributions Policy](https://scikit-learn.org/dev/developers/contributing.html#automated-contributions-policy). \n\nSince [GitHub Copilot Coding Agent Has Arrived!](https://github.com/orgs/community/discussions/159068) and people build [Github-MCP](https://github.com/dhyeyinf/Github-MCP)s that can be integrated with LLM clients, scikit-learn and other open source projects get an increasing amount of AI spam. Many people who care about open source are unhappy about it and request an option to block AI-generated PRs and issues on their projects ([Allow us to block Copilot-generated issues (and PRs) from our own repositories](https://github.com/orgs/community/discussions/159749)) - so far without success.\n\nYou can see that there is an increasing amount of partially or fully generated PRs and a decrease in overall quality for PRs on scikit-learn by looking at [the last closed PRs](https://github.com/scikit-learn/scikit-learn/pulls?q=is%3Apr+is%3Aclosed) (as of June 30th 2025). It is not a flood yet, but bad enough to keep several maintainers busy for some extra hours a week. It could become a flood in the future. This is why it is important to find solutions.\n\nQuite some of the authors of these additional low-quality PRs on scikit-learn also spam llm-based PRs on other open source projects at the same time. I have added repeated cases to @adrinjalali's [agents-to-block](https://github.com/adrinjalali/agents-to-block/pull/1/files) folder. The pattern of spammers is to open a PR with an unqualified guess of what the project needs or how an issue can be solved, and then not follow up after maintainers reviewed, close and try again. \n\nPRs can look like someone made a genuine attempt to address an open issue, and project maintainers start to interact with the \"authors\" - but then their review c...",
+      "labels": [
+        "RFC"
+      ],
+      "state": "open",
+      "created_at": "2025-06-30T08:23:42Z",
+      "updated_at": "2025-07-10T11:49:45Z",
+      "comments": 27,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31679"
+    },
+    {
+      "number": 31672,
+      "title": "ENH Add clip parameter to MaxAbsScaler",
+      "body": "### Describe the workflow you want to enable\n\nAdd a `clip` parameter to `MaxAbsScaler` that will allow for clipping values that exceed the maximum value seen during the training stage.\n\n### Describe your proposed solution\n\nSimilar to `MinMaxScaler`, but in this case it will clip [-1, +1].\n\n### Describe alternatives you've considered, if relevant\n\n_No response_\n\n### Additional context\n\nI'm not sure if it is possible to implement it without breaking sparsity of the inputs, which is the main problem.",
+      "labels": [
+        "Enhancement",
+        "API",
+        "Needs Investigation"
+      ],
+      "state": "closed",
+      "created_at": "2025-06-28T05:22:49Z",
+      "updated_at": "2025-07-25T17:08:54Z",
+      "comments": 9,
+      "url": "https://github.com/scikit-learn/scikit-learn/issues/31672"
+    }
+  ]
+}

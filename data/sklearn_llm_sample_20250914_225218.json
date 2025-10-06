@@ -1,0 +1,609 @@
+[
+  {
+    "text": "KDtree.valid_metrics is no longer an attribute without warning\n\n### Describe the bug Prior 1.3.0, [CODE] was an attribute returning a list. This was also mentioned in the docs as showed in [URL] In 1.3.0, however, #25482 added a new method [CODE], therefore checks like [CODE] does not work anymore. From the perspective of our downstream project, this is an unexpected change of behaviour. I don't think that there's anything we can do about it now but it is a bit unfortunate. I wanted to open the issue to ensure the team is aware of it but given the situation I don't really expect a fix, unless you have some great idea how to resolve it. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results [CODE_BLOCK] We got a list directly before. Now, we have to use [CODE]. ### Actual Results [CODE] ### Versions ```shell System: python: 3.11.4 | packaged by conda-forge | (main, Jun 10 2023, 18:08:41) [Clang 15.0.7 ] executable: /Users/martin/mambaforge/envs/pointpats_dev/bin/python machine: macOS-13.4-arm64-arm-64bit Python dependencies: sklearn: 1.3.0 pip: 23.0.1 setuptools: 67.4.0 numpy: 1.24.4 scipy: 1.11.0 Cython: None pandas: 2.0.3 matplotlib: 3.7.1 joblib: 1.2.0 threadpoolctl: 3.1.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas prefix: libopenblas filepath: /Users/martin/mambaforge/envs/pointpats_dev/lib/libopenblas.0.dylib version: 0.3.21 threading_layer: openmp architecture: VORTEX num_threads: 8 user_api: openmp internal_api: openmp prefi...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Open up [CODE] and [CODE] to overriding [CODE] with an additional callable parameter [CODE]\n\n### Describe the workflow you want to enable Some people (including @betatim @ogrisel @jjerphan and I) have been devising a plugin system that would open up CODE] estimators to other external implementations, and in particular implementations with GPU backends - see [URL] . Some of the plugins we're considering can materialize the data in memory with an array library that is compatible with the Array API - namely [CuPy while still benefiting from reusing existing validation code in [CODE]. The override can be necessary in case the [CODE] method from the array library implements a superset of the array api that is necessary for the plugin, but is currently not used by [CODE] because it's not part of the array api (for instance, the [CODE] argument isn't passed to [CODE] for array libraries other than [CODE])",
+    "labels": [
+      "RFC",
+      "New Feature"
+    ]
+  },
+  {
+    "text": "StackingRegressor.fit() doesn't support sample_weight when using Pipeline objects as estimators\n\n### Describe the bug sklearn 1.5.0. When using a Stacking model, fitting raises the following error when: - [CODE] argument is passed, AND - the individual estimators contain a Pipeline object instead of a single estimator I think the actual problem lies in [CODE] in line 210. There is just [CODE] used as a fit parameter. Instead it should check whether each single estimator is a Pipeline and then transforming the attribute name [CODE] to i.e. [CODE], depending on the last step of the pipeline. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results Should fit the model instead of raising an error ### Actual Results ``` --------------------------------------------------------------------------- ValueError Traceback (most recent call last) c:\\Users\\pfa2ba\\Documents\\dhpt\\dhpt_models.py in <module> 14 15 stack = StackingRegressor([(\"a\", mdl_a), (\"b\", mdl_b)], cv=2) ---> 16 stack.fit(X, Y, sample_weight=W) c:\\Users\\pfa2ba\\.conda\\envs\\dhpt\\lib\\site-packages\\sklearn\\ensemble\\_stacking.py in fit(self, X, y, sample_weight) 969 _raise_for_unsupported_routing(self, \"fit\", sample_weight=sample_weight) 970 y = column_or_1d(y, warn=True) --> 971 return super().fit(X, y, sample_weight) 972 973 def transform(self, X): c:\\Users\\pfa2ba\\.conda\\envs\\dhpt\\lib\\site-packages\\sklearn\\bas...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Groups in BaggingRegressor\n\n### Describe the workflow you want to enable It would be nice if we could control how random indices are created with groups in BaggingRegressor. As far as I can tell, BaggingRegressor will select sub samples u.a.r. with/without replacement. It would be nice if we could group the data points, and have BaggingRegressor select sub samples of (optional) _groups_ u.a.r. with/without replacement. An example of this paradigm already exists in sklearn with cross validation (e.g. KFold vs. GroupKFold) ### Describe your proposed solution One idea is to pass in a vector [CODE] of size [CODE] mapping each data point to its group. Then, [CODE] can respect groups if they exist, or default to its existing behavior if they do not. ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "Segmentation fault in sklearn.metrics.pairwise_distances with OpenBLAS 0.3.28 (only pthreads variant)\n\n[CODE_BLOCK] [CODE_BLOCK] This happens with OpenBLAS 0.3.28 but not 0.3.27. Setting the [CODE] or [CODE] environment variable also make the issue disappear. This is somewhat reminiscent of [URL] so there may be something in OpenBLAS 0.3.28 [^1] that doesn't like [CODE] followed by [CODE]? No idea how to test this hypothesis ... this could well be OS-dependent since [URL] only happens on Linux. [^1]: OpenBLAS 0.3.28 is used in numpy development wheel and OpenBLAS 0.3.27 is used in numpy latest release 2.1.2 at the time of writing <details> <summary>Python traceback</summary> ``` Fatal Python error: Segmentation fault Thread 0x00007c7907e006c0 (most recent call first): File \"/home/lesteve/micromamba/envs/testenv/lib/python3.12/multiprocessing/pool.py\", line 579 in _handle_results File \"/home/lesteve/micromamba/envs/testenv/lib/python3.12/threading.py\", line 1012 in run File \"/home/lesteve/micromamba/envs/testenv/lib/python3.12/threading.py\", line 1075 in _bootstrap_inner File \"/home/lesteve/micromamba/envs/testenv/lib/python3.12/threading.py\", line 1032 in _bootstrap Thread 0x00007c790d2006c0 (most recent call first): File \"/home/lesteve/micromamba/envs/testenv/lib/python3.12/multiprocessing/pool.py\", line 531 in _handle_tasks File \"/home/...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Putting it all together Pipelining is not working ( missing dependencies and plot )\n\n### Describe the issue linked to the documentation From [URL] it is missing [CODE_BLOCK] The last chart is missing the data ![image]([URL] ### Suggest a potential alternative/fix _No response_",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "\"StackingClassifier\" throws ValueError when cv = \"prefit\"\n\n### Describe the bug When I use the CODE], I get the error \"ValueError: Expected cv as an integer, cross-validation object (from sklearn.model_selection) or an iterable. Got prefit.\" when calling the [CODE] method ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results Expected to fit the model. According to the [docs or an iterable. Got prefit.\" ### Versions ```shell System: python: 3.10.2 (tags/v3.10.2:a58ebcc, Jan 17 2022, 14:12:15) [MSC v.1929 64 bit (AMD64)] executable: c:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python310\\python.exe machine: Windows-10-10.0.22000-SP0 Python dependencies: pip: 22.2.2 setuptools: 59.8.0 sklearn: 1.0.2 numpy: 1.23.2 scipy: 1.8.0 Cython: 0.29.28 pandas: 1.4.0 matplotlib: 3.5.1 ...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "\u26a0\ufe0f CI failed on Wheel builder (last failure: Apr 26, 2024) \u26a0\ufe0f\n\nCI is still failing on Wheel builder",
+    "labels": [
+      "Bug",
+      "Build / CI"
+    ]
+  },
+  {
+    "text": "LogisticRegression's regularization is scaled by the dataset size\n\n### Describe the workflow you want to enable Other linear models on [URL] have regularization that doesn't depend on the dataset size ### Describe your proposed solution It would be good to either change the behavior or document it very very very clearly, not only in the user guide as it is now but also in the model documentation. ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Try running examples in parallel during doc build\n\nWe are already using sphinx-gallery 0.17 which has added the feature to run examples in parallel see URL] See [sphinx-gallery doc. I had a quick look during the sphinx-gallery PR and it was making the doc a bit quicker locally: [URL] General directions: - configure sphinx-gallery to use 2 cores in [CODE] [CODE_BLOCK] - open a PR with [CODE] commit to do a full build - also generate the doc locally e.g. with [CODE] + [CODE] and see how much sphinx-gallery parallel settings make a difference",
+    "labels": [
+      "Build / CI"
+    ]
+  },
+  {
+    "text": "Kmeans : Different cluster result with same random_state beetwen two version 0.22.2 & 1.2.2\n\n### Describe the bug Hello everyone, I'm currently working on a clustering problem. To ensure result reproducibility, we initially set the random_state parameter in KMeans() to 0. However, after updating scikit-learn from version 0.22.2 to version 1.2.2, i encountered an unexpected issue. When i ran the same code with the same dataset , the results differed from our previous run. We are uncertain about the reasons behind this inconsistency and have been unable to reproduce the initial result. ### Steps/Code to Reproduce model = KMeans(n_clusters=5, init='k-means++', tol=0.0001, random_state=0, copy_x=True, algorithm='auto' ) ### Expected Results Version 0.22.2 : Numer of cluster = 5 Cluster 1 | Cluster 2 | Cluster 3 | Cluster 4| cluster 5 10| 20| 12| 30|45 Version 1.2.2 : Numer of cluster = 5 Cluster 1 | Cluster 2 | Cluster 3 | Cluster 4| cluster 5 10| 20| 12| 30|45 ### Actual Results Version 0.22.2 : Numer of cluster = 5 Cluster 1 | Cluster 2 | Cluster 3 | Cluster 4| cluster 5 10| 5| 6| 14|5 Version 1.2.2 : Numer of cluster = 5 Cluster 1 | Cluster 2 | Cluster 3 | Cluster 4| cluster 5 3| 7| 20| 8|2 ### Versions [CODE_BLOCK]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Unexpected behavior when combining FunctionTransformer and pandas DataFrames\n\n### Describe the bug When using a pandas [CODE] with the [CODE] on data with the wrong column order, the column names are mixed. While this behavior might be derived from the documentation, it still felt unexpected. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results The same column is returned. ### Actual Results [CODE_BLOCK] ### Versions ```shell System: python: 3.13.7 | packaged by conda-forge | (main, Sep 3 2025, 14:30:35) [GCC 14.3.0] executable: /opt/conda/envs/sklearn_burg/bin/python3 machine: Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.35 Python dependencies: sklearn: 1.7.2 pip: 25.2 setuptools: 80.9.0 numpy: 2.3.3 scipy: 1.16.1 Cython: None pandas: 2.3.2 matplotlib: None joblib: 1.5.2 threadpoolctl: 3.6.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas num_threads: 28 prefix: libopenblas filepath: /opt/conda/envs/sklearn_burg/lib/libopenblasp-r0.3.30.so version: 0.3.30 threading_layer: pthreads architecture: Haswell user_api: openmp internal_api: openmp num_threads: 28 prefix: libgomp filepath: /opt/conda/envs/sklearn_burg/lib/libgomp.so.1.0.0 ...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "\u26a0\ufe0f CI failed on Linux_Nightly.pylatest_pip_scipy_dev (last failure: Dec 22, 2024) \u26a0\ufe0f\n\nCI is still failing on Linux_Nightly.pylatest_pip_scipy_dev - test_euclidean_distances_extreme_values[1000000-float32-0.0001-1e-05]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Bug: StackingRegressor serialization error with custom neural network regressors (TabTransformer, ANN, DNN)\n\n### Describe the bug Bug Report: StackingRegressor in scikit-learn Fails with Custom Neural Network Regressors Dear scikit-learn Maintainers, I am Dr. Mohsen Jahan, Professor of Agroecology and Instructor of Artificial Intelligence and Digital Transformation at Ferdowsi University of Mashhad, Iran. While conducting a research project on multi-objective feature selection using the NSGA-III algorithm and stacking models, I encountered an issue with the StackingRegressor implementation in scikit-learn (version 1.5.2). Specifically, this module exhibits compatibility issues with custom regression models, particularly those based on neural networks such as TabTransformerRegressor, ANNRegressor, and DNNRegressor. Issue Description When using StackingRegressor in scikit-learn with custom regression models that adhere to the standard scikit-learn API (e.g., implementing fit and predict methods) but rely on complex internal structures (e.g., based on tensorflow or pytorch), serialization or cloning errors occur. These errors manifest particularly when such models are used as regressors or meta_regressor in StackingRegressor, affecting processes like GridSearchCV or model persistence with joblib. For instance, in our project, employing a custom SimpleDNNRegressor (built with tensorflow) as the meta-regressor in StackingRegressor resulted in serialization errors. This issue was n...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "RFC: Breaking Changes for Version 2\n\nA while ago we talked about the possibility of a version 2 with breaking changes. Specifically, this came up in the context of SLEP006: metadata routing, but there are other things we have wanted to break which we can do all in a single release. In this issue we can talk about the possibility of such a release, and maybe a few things we'd like to include in it. I'll try to summarize the challenges of keeping backward compatibility (BC) in the context of SLEP006: - [CODE] will raise according to SLEP006 since [CODE] is not requested by any object. For backward compatibility, during the transition period, it'll only warn and assume [CODE] is requested by [CODE]. - What should the behavior of [CODE] be during the transition period? If we keep backward compatibility, it should warn (whatever the warning be), route [CODE] to [CODE], but not to the [CODE]. And that's only the case because we're keeping BC. From the user's perspective, it's very weird. - [CODE] ATM in certain methods like [CODE], [CODE], [CODE], routes [CODE] to the [CODE] of the last estimator only. And [CODE] and [CODE], [CODE] have no routing at all. Keeping this BC, proves to be challenging, and a bit nasty. ref: #24270 - In quite a few meta-estimators, we check if the sub-estimator has [CODE] in the signature of [CODE], and we pass the given sample weight to it if that's the case, and not if that's not the case. With routing, we would have a much better idea of when to pass ...",
+    "labels": [
+      "RFC"
+    ]
+  },
+  {
+    "text": "Davies-Bouldin Index implementation is incomplete\n\n### Describe the workflow you want to enable The DB-Index has two parameters, p and q, where p is the power of the Minkowski norm used to compute the distance of cluster centers, while q controls the power mean for the \"radius\" / scatter. p=q=2 is probably the most meaningful combination. The current implementation appears to be hard-coded to p=2, q=1 ### Describe your proposed solution Add [CODE] and [CODE] parameters, default to what the current implementation uses. Allow passing known cluster centers with a [CODE] parameter, instead of recomputing them inside the function. Enhance the documentation that this index is most suited for k-means clustering, because it uses cluster centroids. ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "MLPClassifier: Cannot turn off convergence warning without side effects\n\n### Describe the bug As described [MSC v.1934 64 bit (AMD64)] executable: []\\WPy64-31110\\python-3.11.1.amd64\\python.exe machine: Windows-10-10.0.19045-SP0 Python dependencies: sklearn: 1.2.2 pip: 22.3.1 setuptools: 65.5.0 numpy: 1.24.3 scipy: 1.10.1 Cython: None pandas: 2.0.1 matplotlib: 3.7.1 joblib: 1.2.0 threadpoolctl: 3.1.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas prefix: libopenblas filepath: []\\WPy64-31110\\python-3.11.1.amd64\\Lib\\site-packages\\numpy\\.libs\\libopenblas64__v0.3.21-gcc_10_3_0.dll version: 0.3.21 threading_layer: pthreads architecture: Haswell num_threads: 8 user_api: openmp internal_api: openmp prefix: vcomp filepath: [*]\\WPy64-31110\\python-3.11.1.amd64\\Lib\\site-packages\\sklearn\\.libs\\vcomp140.dll version: None num_threads: 8 user_ap...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Issues with pairwise_distances(metric='euclidean') when used on the output of UMAP\n\n### Describe the bug When using pairwise_distances with metric='euclidean' on the output of some data from a UMAP, a [CODE] is raised. This warning is not raised if you just use pairwise_distances on some normally distributed values of the same dimension, it specifically happens when used on the output of UMAP. The warning is not raised if calling [CODE] on the same data. The warning doesn't come up with any other metric (other than euclidean family e.g. nan_euclidean etc) ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results Would expect to see no RuntimeWarning (FutureWarning is expected) ### Actual Results [CODE_BLOCK] ### Versions ```shell System: python: 3.10.16 (main, Feb 25 2025, 09:29:51) [Clang 16.0.0 (clang-1600.0.26.6)] executable: .../bin/python machine: macOS-15.4-arm64-arm-64bit Python dependencies: sklearn: 1.6.1 pip: 25.0.1 setuptools: 65.5.0 numpy: 2.1.3 scipy: 1...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Handle new [CODE] that is coming in pandas 3\n\nThis issue is the result of investigating [URL] The failures in the nightlies are due to changes coming in pandas 3.0. In particular the switch to using [CODE] as the type for string columns. The old behaviour was to use [CODE]. This has a few effects: - can no longer use [CODE] because the new dtype isn't one known to numpy - selecting columns in [CODE] doesn't select the right columns anymore These are the failing tests: [CODE_BLOCK] Three of these (first one and last two) are due to using [CODE]. The other failures are due to not selecting the right columns (n.b. the way the test...",
+    "labels": [
+      "Enhancement"
+    ]
+  },
+  {
+    "text": "mirrors-prettier pre-commit has been archived so maybe should be replaced\n\n### Describe the bug Noticed your [mirrors-prettier pre-commit]([URL] has been archived. I was going to suggest you remove and/or look for alternative linters for the scss / js files. ### Steps/Code to Reproduce Noticed this in the .pre-commit-config.yaml [CODE_BLOCK] ### Expected Results N/A ### Actual Results N/A ### Versions [CODE_BLOCK]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "KBinsDiscretizer creates wrong bins.\n\n### Describe the bug [CODE] gives wrong bins and wrong transformed data, when the inputs contains only 2 distinct values, and [CODE]. It only produces 1 bin, which is not expected. The warning shows some bins are too small so they are merged. Note that when setting [CODE], [CODE] gives more reasonable bins and correct results. However, from the [CODE], it seems [CODE] is handled separately. ### My guess about the cause I think the root cause is inconsistent handling of [CODE] and [CODE] in fitting and transforming. In fitting, [CODE] and [CODE] are not considered when removing duplicated bin edges. But in transforming data, the first and last bin edges are replaces with [CODE] and [CODE]. Such differences obviously removes some necessary bins. Taking the case I mentioned as a example, current implementation deduplicates bin edges from [CODE] to [CODE]. Then in transforming, all real values are actually in one bin, since the bin edges are replaced with [CODE] and [CODE]. A more reasonable conversion is replacing first and last bin edges with [CODE] and [CODE] in fitting, i.e., [CODE], then removing duplicated edges, which gives [CODE]. This will give expected results. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results The last [CODE] should give [CODE_BLOCK] or [CODE_BLOCK] . It depends on how to implement it correctly. ### Actual Results The last [CODE] gives [CODE_BLOCK] ### Versions ```shell System: python: 3.8.16 (default, J...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "PowerTransformer fails with unhelpful stack trace with all-nan feature and method='box-cox'\n\n### Describe the bug CODE] throws a difficult-to-debug error if x contains an all-nan column. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results Either no error is thrown and the all-nan column is preserved, or a descriptive error is thrown indicating that there is an unfittable column ### Actual Results ``` ValueError Traceback (most recent call last) [<ipython-input-12-563273596add> ----> 1 PowerTransformer('box-cox').fit_transform(x) 4 frames /usr/local/lib/python3.10/dist-packages/sklearn/utils/_set_output.py 138 @wraps(f) 139 def wrapped(self, X, args, kwargs): --> 140 data_to_wrap = f(self, X, args, *kwargs) 141 if isinstance(data_to_wrap, tuple): 142 # only wrap the first output for cross decomposition /usr/local/lib/python3.10/dist-packages/sklearn/preprocessing/_data.py 3101 \"\"\" 3102 self._validate_params() -> 3103 return self._fit(X, y, force_transform=True) 3104 3105 def _fit(self, X, y=None, force_transform=False): /usr/local/lib/python3.10/dist-packages/sklearn/preprocessing/_data.py 3114 }[self.method] 3115 with np.errstate(invalid=\"ignore\"): # hide NaN warnings -> 3116 self.lambdas_ = np.array([optim_function(col) for col in X.T]) 3117 3118 if self.standardize or force_tran...",
+    "labels": [
+      "Bug",
+      "help wanted"
+    ]
+  },
+  {
+    "text": "auto clusters selection of n_clusters with elbow method\n\n### Describe the workflow you want to enable In, sklearn.cluster the KMeans algorithm. the feature suggestion is to add the elbow method cluster selection with n_cluster=\"auto\" calculates the best no of cluster based on mse add trains the models based on the return output of auto_cluster_selection() with auto as keyword in KMeans ### Describe your proposed solution to create a private method in the KMeans to calculate the no of best clusters automatically by taking the n_clusters=\"auto\" ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "Add differential privacy noise injection to SGDRegressor with automatic calibration\n\n### Describe the workflow you want to enable Enable differential privacy in SGDRegressor by adding noise injection with: 1. Manual noise scale setting, or 2. Automatic noise calibration from desired privacy parameter \u03b5 ### Describe your proposed solution Add parameters to SGDRegressor: CODE_BLOCK] ### Research basis Builds on: - [\"Deep Learning with Differential Privacy\" - JAX Privacy ### Benefits 1. Enables both manual noise configuration and automatic calibration 2. Calculates correct noise scale for desired privacy level 3. Interfaces naturally with the clipping parameter from #30113 Would be happy t...",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "Incorrect formula of haversine distance\n\n### Describe the issue linked to the documentation Hi, I was wondering through documentation: [URL] On the page above you have what might be incorrect formula of haversine distance [CODE] ### Suggest a potential alternative/fix Correct formula: [CODE]",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Add float as acceptable input for n_jobs\n\n### Describe the workflow you want to enable Float may be used as possible input for n_jobs. That is, allowing selection of set percentage of the machine's CPU core count. ### Describe your proposed solution When n_jobs is a float (in the range [CODE]), the number of CPU cores can be checked using the STL or scikit-learn dependencies, with [CODE], [CODE], [CODE], etc. and [CODE] can be set as the value of self.n_jobs.",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "Deprecate copy_X in TheilSenRegressor\n\nThe [CODE] parameter of `[CODE]` is not used anywhere and hence has no effect, so we should deprecate it.",
+    "labels": [
+      "help wanted"
+    ]
+  },
+  {
+    "text": "\"X does not have valid feature names\" when training on DataFrame input with MLP\n\n### Describe the bug Bug happens only when early_stopping option is True. Looks like [CODE] and [CODE] inside of [CODE] training loop are ndarrays, but model detects column names of input [CODE] on [CODE] step. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results No messages like \"UserWarning: X does not have valid feature names, but MLPClassifier was fitted with feature names\" ### Actual Results multiple messages like [CODE_BLOCK] ### Versions ```shell System: python: 3.10.6 (main, Nov 2 2022, 18:53:38) [GCC 11.3.0] executable: /home/usopp/sinp/mineralogy-2022/main/venv/bin/python machine: Linux-5.15.0-52-generic-x86_64-with-glibc2.35 Python dependencies: sklearn: 1.1.3 pip: 22.2.2 setuptools: 62.3.4 numpy: 1.23.3 scipy: 1.9.1 Cython: None pandas: 1.5.0 matplotlib: 3.6.0 joblib: 1.2.0 threadpoolctl: 3.1.0 Built with OpenMP: True threadpoolctl info: user_api: openmp internal_api: openmp prefix: libgomp filepath: /home/usopp/sinp/mineralogy-2022/main/venv/lib/python3.10/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0 version: None num_threads: 12 user_api: blas internal_api: openblas prefix: libopenblas file...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Make an instance of ColumnTransformer pass the common test\n\n### Describe the bug Not sure if CODE] is appropriate to use with transformers, but [CODE] inherits from [CODE], so I'm assuming so. I have a custom transformer that inherits from [CODE], and I'm trying to use [CODE] to make sure I am doing so properly. However, [CODE] itself fails on multiple tests; I'm assuming many are because creating a non-trivial [CODE] involves specifying required feature names, which seems to go against some of the tests in [CODE]. Is there a different best practice to test a custom subclass of [CODE] and/or transformers in general? ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results All tests pass. ### Actual Results [Test Results \u2014.pdf [Clang 15.0.7 ] executable: /my_env/bin/python machine: macOS-13.4-arm64-arm-64bit Python dependencies: sklearn: 1.3.1 pip: 23.3.1 setuptools: 68.2.2 numpy: 1.26.0 scipy: 1.11.3 Cython: None pandas: 2.1.1 matplotlib: 3.8.0 joblib: 1.3.2 threadpoolctl: 3.2.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas num_threads: 8 prefix: libopenblas filepath: /my_env/lib/libopenblas.0.dylib version: 0.3.24 threading_layer: openmp architecture: VORTEX ...",
+    "labels": [
+      "Enhancement"
+    ]
+  },
+  {
+    "text": "Create a classification report using a confusion matrix as input\n\n### Describe the workflow you want to enable I had some results stored in the form of a confusion matrix for some experiments. However, I wanted to use [CODE] to easily compute all the metrics. ### Describe your proposed solution My solution consists of creating new [CODE] and [CODE] vectors and using those to then call [CODE]. [CODE_BLOCK] ### Describe alternatives you've considered, if relevant I first tried using lists and appending values, but the [CODE] version performs faster, although slightly less readable: [CODE_BLOCK] ### Additional context I was comparing two approaches:  Two separate models, each for different tasks  One single model incorporating both tasks Two compare them, I built a confusion matrix of the two separate models and concatenated them so that the final confusion matrix would be similar to the single model. I used this function to generate the classification report of the two separate models after concatenating their confusion matrices. In the case of the single model, I could use [CODE] directly.",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "average_precision_score() and roc_auc_score() require a full list of arguments\n\n### Describe the bug These two functions, namely average_precision_score() and roc_auc_score() require a full list of arguments. Otherwise, it reports errors! ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results [CODE_BLOCK] ### Actual Results [CODE_BLOCK] ### Versions [CODE_BLOCK]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Improve \"polars\" integration (error, warning & linting examples)\n\n### Describe the workflow you want to enable using polars data (DataFrame, Series) is already supported in many places which is awesome, thank you!! But in many places there are still - errors / crashes -> required conversion to numpy/pandas - warnings -> requires conversion to numpy/pandas - linting/type problems -> requires updates to typing signalture? # Examples ## Code [CODE_BLOCK] ## Errors / crashes using polars Both [CODE] and [CODE] crash using polars Series with message: - [CODE]__getitem__[CODE] ### Temporary solution use - [CODE] -> works with numpy array - [CODE] -> works with pandas Series ## Warnings [CODE] creates \"UserWarnings\" using polars DataFrame with message: - [CODE] ### Temporary Solution use - [CODE] -> works with pandas DataFrame ## Linting / Type problems numpy arrays and pandas DataFrame have \"full support\" while polars looks a little sad \ud83d\ude06 ![image]([URL]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "correct SAGA weight update with prox\n\nIt seems that saga weights are being updated here with saga bit after the prox operator has been applied to SAG update [URL] Should the prox operator be applied again here after SAGA weight update? Looks like it is what is happeng in lightning [implementation]([URL]",
+    "labels": [
+      "help wanted"
+    ]
+  },
+  {
+    "text": "Handling 'category' for LightGBM models\n\n### Describe the bug We should be able to convert some columns in the type 'category' in a DataFrame and let the LightGBM model handle it by itself. ### Steps/Code to Reproduce ```python import pandas as pd import numpy as np from lightgbm import LGBMClassifier from sklearn.pipeline import Pipeline from sklearn.compose import ColumnTransformer from sklearn.impute import SimpleImputer from sklearn.preprocessing import StandardScaler, OneHotEncoder from sklearn.model_selection import train_test_split from sklearn.metrics import accuracy_score from sklearn.preprocessing import FunctionTransformer # Load data url = \"[URL] data = pd.read_csv(url) # Drop Name and other non-numeric non-categorical columns data = data.drop(columns=['Name']) # Define a transformer to convert specific columns to category type def convert_to_category(X): categorical_cols = X.select_dtypes(include=['object', 'bool']).columns.tolist() X[categorical_cols] = X[categorical_cols].astype('category') return X # Train/test split X_train, X_test, y_train, y_test = train_test_split( data.drop(\"Survived\", axis=1), data[\"Survived\"], random_state=42 ) # Preprocessing for numerical data: standardization and missing value imputation numerical_transformer = Pipeline(steps=[ ('imputer', SimpleImputer(strategy='mean')), ('scaler', StandardScaler()) ]) # We create the preprocessor stage of final pipeline # Each transformer is a three-element tuple # (name, transformer, columns) prep...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Add a version of [CODE]/[CODE]/[CODE] that allows input of X with missing values and [CODE].\n\n### Describe the workflow you want to enable - Select features by the percentage of missing values of X - Select features only by statistical properties of X before y is available ### Describe your proposed solution Create a version with weaker X, y checks. ### Describe alternatives you've considered, if relevant 1. [CODE_BLOCK] Not sure if this code works properly. 2. Bother to create an estimator that outputs the desired function in [CODE] and use [CODE] ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "RFC drop support for python 3.8 ? bump min dependencies ?\n\nThe 1.3 release being scheduled for the first half of june, it's time to think about bumping the min dependencies. Up to now we've been trying to roughly follow NEP29 according to [oldest-supported-numpy]([URL] Scipy min version has already been bumped in [URL] Pytest has also already been bumped in [URL] Joblib min version is just 1 release before the latest so we probably don't want to bump it yet. Any objection or request ?",
+    "labels": [
+      "RFC"
+    ]
+  },
+  {
+    "text": "[RFC] Modularize 'Criterion' class inside tree submodule to allow 3rd party extensions for data-based criterion\n\n### Summary There exists other criterions, where additional arguments would need to be passed in. The current [CODE] class is not actually a generic Criterion class since it explicitly assumes that the Criterion is supervised-learning based and does NOT require the data [CODE] itself. The [CODE] function explicitly passes in [CODE]. I am trying to implement and subclass [CODE] to implement Unsupervised Random Forests ([URL] which use the data within the Criterion. I would like to subclass the [CODE] class for my own [CODE]. However, the [CODE] function assumes access to a [CODE] label, but everything else about it is fine and correct. Instead I would like to define my own [CODE] function, but keep the rest of the Criterion API. This way, I can define an unsupervised criterion with the [CODE] function: [CODE_BLOCK] and I could then define the rest of the functions, while making sure I am in strict compliance with sklearn's Tree submodule. ### Proposed Solution Add a class called [CODE] and migrate all functions/properties of the current [CODE] class, EXCEPT for [CODE] function to [CODE]. This is completely backwards-compatable and ensures 3rd party API can leverage the existing API contract for Criterions using the [CODE] class. ### Alternatives Alternatively, I can do what [CODE] does and pass in this additional data to [CODE], but this is weird because you basical...",
+    "labels": [
+      "RFC"
+    ]
+  },
+  {
+    "text": "Drop Duplicates from Data Before Fitting Estimator in RFE\n\n### Describe the workflow you want to enable Currently, RFE makes a slice of the data that only includes specific features. Then, RFE fits the provided estimator to that slice. Making a slice of the data reduces the number of possible variations that can be found in the dataset, potentially leading to many duplicates being found in the dataset. Duplicates become highly prevalent when RFE needs to select a small number of features. Using a dataset with many duplicates to fit an estimator can result in misleading feature importance, bias towards the duplicated data points, and increased training time. My proposal: Drop duplicates from array slice before fitting the provided estimator in RFE so that the model doesn't overfit and provide misleading metrics. ### Describe your proposed solution Previous: [CODE_BLOCK] Proposed Solution (Using Pandas): [CODE_BLOCK] Proposed Solution (Using Numpy): [CODE_BLOCK] ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "Fitting different instances of [CODE] is not thread-safe\n\n### Describe the bug Found while working on #30041. See the reproducer below. Fitting [CODE] probably relies on a shared global state in the C++ code and that introduces a race condition when fitting several models concurrently in different threads. As a result, the outcomes are randomly corrupted. [CODE] does not seem to have the problem (or at least not with its default solver). ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results Nothing. ### Actual Results ```python --------------------------------------------------------------------------- AssertionError Traceback (most recent call last) Cell In[22], line 32 23 sequential_results = [ 24 model_class(C=C, random_state=0).fit(X, y).coef_.copy() for C in C_range 25 ] 28 parallel_results = Parallel(n_jobs=4, backend=\"threading\")( 29 delayed(lambda C: model_class(C=C, random_state=0).fit(X, y).coef_.copy())(C) 30 for C in C_range 31 ) ---> 32 np.testing.assert_array_equal( 33 sequential_results, ...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "DOC Remove some links from the list of related packages\n\nFrom the list [URL] I propose to remove - svmlight-loader Reason: Not installable via [CODE], not license - Neptune because it is not really usable without an account. Was added in #20767. - rep Reason: outdated (last commit in 2016), requires [CODE] - nolearn Reason: outdated (last commit in 2019), requires [CODE] - Lasagne: outdated - Kernel Regression Reason: outdated - LibOPF Reason: not installable via [CODE] - Spotlight Reason: not installable via [CODE] or [CODE] (only some non-standard channel) - MSMBuilder Reason: [github repo]([URL] has been archived Remarks: - mlxtend is listed twice - LightGBM should be listed BTW: We should set some standard as to what we require to be listed.",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "BisectingKmeans - intertia per cluster\n\n### Describe the bug Hi, I have been using the sklearn package recently for some simple clustering. It appears to me that there is a typo in the BisectingKMeans class. In the [CODE] method, we need to compute the inertia per-cluster. However, in the current version of the package we have the following: [CODE_BLOCK] This will through an error unless the centers form a squared matrix, i.e. if we have the same number of clusters as we have scalar features... In order to solve this, we could simply replace the line 276 in [the corresponding file]([URL] with: [CODE_BLOCK] ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results no error should be thrown ### Actual Results IndexError: index 1 is out of bounds for axis 0 with size 1 ### Versions [CODE_BLOCK]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Add handle_missing and handle_unknown options to TargetEncoder\n\n### Describe the workflow you want to enable This issue has a similar proposition then #17123, in which is discussed the addition of [CODE] and [CODE] from [CODE] in [CODE] library. The justification for it is that we should allow users to treat the NaN values as they wish, whether by imputation, algorithms robust to missing data or by any another approach. To see if this change can have a positive impact on modeling, I decided to run a Cross Validation in order to compare the performance of [CODE] allowing to return NaN values \u200b\u200band allowing to return a value (target mean). ```python from ucimlrepo import fetch_ucirepo from sklearn.ensemble import BaggingClassifier from sklearn.pipeline import Pipeline from category_encoders import TargetEncoder from sklearn.tree import DecisionTreeClassifier from sklearn.model_selection import cross_val_score, StratifiedKFold import matplotlib.pyplot as plt #%% adult = fetch_ucirepo(id=2) X = adult.data.features y = adult.data.targets y = y['income'].str.contains('>50K') # %% kf = StratifiedKFold(5, shuffle = True, random_state = 101) return_nan_clf = Pipeline([ ('encoder', TargetEncoder(handle_unknown='return_nan', handle_missing='return_nan')), ('classifier', BaggingClassifier( DecisionTreeClassifier( max_features = 'sqrt' ), n_estimators=100, )) ]) mean_clf = Pipeline([ ('encoder', TargetEncoder(handle_unknown='value', handle_missing='value')), ('classifier', BaggingClassifi...",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "Boundary value problem of [CODE] and a suggestion on the document\n\n### Describe the issue linked to the documentation Hi devs of scikit-learn, I found a potential slight boundary value problem in [[CODE]]([URL] The code here is looks like: [CODE_BLOCK] The boundary value judgment of [CODE] is incomplete because 0 is not considered, although [CODE] usually takes a very small value, such as 1e-4. By the way, the related document of [[CODE]]([URL] can also be improved. In [CODE] part, the document only claims that [CODE] can be negative when removing features using [CODE]. Why not add the information in the error message to the document? This will help users better understand the relationship between [CODE] and [CODE], especially for newcomers. ### Suggest a potential alternative/fix Maybe you can add \"tol must be positive when doing forward selection\" in the documentation and change [CODE] to [CODE] in if branch.",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "ValueError: The covariance matrix of the support data is equal to 0 - Elliptic Envelope\n\n### Describe the bug I have been using Elliptic Envelope on a simple time series dataset with default parameters and only setting [CODE] value to [CODE]. However it throws me error like below: [CODE] Looking at the error, I referred to the documentation and the equation of [CODE] does not seem to be clear. It sayd -> [CODE]. [CODE]. The value of [CODE] and [CODE] can never be such that it will fall within 0 and 1. Could you please help in understanding and how this issue can be resolved? ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results No error is thrown ### Actual Results ``` File /opt/anaconda3/envs/benchmark/lib/python3.9/site-packages/sklearn/covariance/_elliptic_envelope.py:145, in EllipticEnvelope.fit(self, X, y) 134 def fit(self, X, y=None): 135 \"\"\"Fit the EllipticEnvelope model. 136 137 Parameters (...) 143 Not used, present for API consistency by convention. 144 \"\"\" --> 145 super().fit(X) 146 self.offset_ = np.percentile(-self.dist_, 100. * self.contamination) 147 return self File /opt/anaconda3/envs/benchmark/lib/python3.9/site-packages/sklearn/covariance/_robust_covariance.py:668, in MinCovDet.fit(self, X, y) 666 self.dist_ = raw_dist 667 # obtain consistency at normal models --> 668 self.correct_covariance(X) 669 # re-weight estimator 670 self.reweight_covariance(X) File /opt/anaconda3/envs/benchmark/lib/python3.9/site-packages/sklearn/covariance/_robust_covarianc...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "LinearRegression with zero sample_weights is not the same as excluding those rows\n\n### Describe the bug Excluding rows having [CODE] in [CODE] does not give the same results. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results Always [CODE]. ### Actual Results [CODE_BLOCK] The print statement gives: [CODE_BLOCK] ### Versions [CODE_BLOCK] ```",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Add sample_weight support to binning in HGBT\n\nUse CODE] in the binning of [CODE] and [CODE], or allow it via an option. Currently, sample weights are ignored in the [CODE]. Some more context and history summarized by @NicolasHug [here. Reading back the original PR, this was discussed extensively: > > - LightGBM implem doesn't take weights into account when binning ENH Support sample weights in HGBT #14696 (comment)](URL] Olivier and Andy seemed to be happy with it [ENH Support sample weights in HGBT #14696 (comment)]([URL] may be relevant here: it's not super clear to me how we should handle SW in an estimator that performs some sort of subsambling during the training process (as is the case here during Binning).",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "[CODE] fails if custom estimator implements [CODE]\n\n### Describe the bug Title. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results The tests should run. ### Actual Results Parametrizing the tests fails, because [CODE] thinks it's a function tries to look up [CODE], which doesn't exist. ### Versions ```shell System: python: 3.11.6 (main, Oct 16 2023, 19:37:59) [GCC 11.4.0] executable: /home/rscholz/Projects/KIWI/tsdm/.venv/bin/python machine: Linux-6.5.0-27-generic-x86_64-with-glibc2.35 Python dependencies: sklearn: 1.4.2 pip: 24.0 setuptools: 69.5.1 numpy: 1.26.4 scipy: 1.13.0 Cython: None pandas: 2.2.2 matplotlib: 3.8.4 joblib: 1.4.0 threadpoolctl: 3.4.0 Built with OpenMP: True threadpoolctl info: user_api: openmp internal_api: openmp num_threads: 24 prefix: libgomp filepath: /home/rscholz/Projects/KIWI/tsdm/.venv/lib/python3.11/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0 version: None user_api: blas internal_api: openblas num_threads: 24 prefix: libopenblas filepath: /home/rscholz/Projects/KIWI/tsdm/.venv/lib/python3.11/site-packages/numpy.libs/libopenblas64_p-r0-0cf96a72.3.23.dev.so version: 0.3.23.dev threading_layer: pthreads architecture: Zen user_api: blas internal_api: openblas num_threads: 24 prefix: libope...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Sphinx search summary disappeared from 1.5 website\n\nLooks like the sphinx search summary has gone from 1.5 website. Not crucial, but showing the context of the match is handy to decide which link is more likely to have the information we want when we use the doc search bar. Maybe due to pydata-sphinx-theme switch, maybe something else ... More context: [URL] Screenshot for 1.4 [URL] ![image]([URL] Screenshot for 1.5 [URL] ![image]([URL]",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Sponsors page: update with CZI / Wellcome Trust 2024 grant\n\n### Describe the issue linked to the documentation [URL] ### Suggest a potential alternative/fix _No response_",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "MLP Classifier\n\n### Describe the issue linked to the documentation in the argument of MLP: hidden_layer_sizes : tuple, length = n_layers - 2, default=(100,) The ith element represents the number of neurons in the ith hidden layer. we are allowed to input a tuple (a,b) for hidden_layer_sizes. But the meaning of a, b is not so clear in the document. i think it could be more specified like what is a, b is representing. depth? neurons in each layer? ### Suggest a potential alternative/fix i think it could be more specified like what is a, b is representing. depth? neurons in each layer?",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "[Array API] [CODE] uses [CODE] rather than [CODE]\n\n### Describe the bug stable_cumsum Cell In[6], line 1 ----> 1 stable_cumsum(arr) File ~/mambaforge/envs/torch_igpu/lib/python3.10/site-packages/sklearn/utils/extmath.py:1214, in stable_cumsum(arr, axis, rtol, atol) 1211 xp, _ = get_namespace(arr) 1213 out = xp.cumsum(arr, axis=axis, dtype=np.float64) -> 1214 expected = xp.sum(arr, axis=axis, dtype=np.float64) 1215 if not xp.all( 1216 xp.isclose( 1217 out.take(-1, axis=axis), expected, rtol=rtol, atol=atol, equal_nan=True 1218 ) 1219 ): 1220 warnings.warn( 1221 ( 1222 \"cumsum was found to be unstable: \" (...) 1225 RuntimeWarning, 1226 ) File <__array_function__ internals>:200, in sum(*args, kwargs) File /opt/venv/lib/python3.10/site-packages/numpy/core/fromnumeric.py:2324, in sum(a, axis, dtype, out, keepdims, initial, where) 2321 return out 2322 return res -> 2324 return _wrapreduction(a, np.add, 'sum', axis, dtype, out, keepdims=keepdims, 2325 initial=initial, where=where) File /opt/venv/lib/python3.10/site-packages/numpy/core/fromnumeric.py:82, in _wrapreduction(obj, ufunc, method, axis, dtype, out, kwargs) 78 else: 79 # This branch is needed for reductions like any which don't 80 # support a d...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "CI is broken due to pydantic update to v2.5.3\n\n### Describe the bug Hi, We are unable to run the CI. Before: URL] ![image: File \"/usr/share/miniconda/bin/conda-lock\", line 6, in <module> from conda_lock import main File \"/usr/share/miniconda/lib/python3.11/site-packages/conda_lock/__init__.py\", line 3, in <module> from conda_lock.conda_lock import main File \"/usr/share/miniconda/lib/python3.11/site-packages/conda_lock/conda_lock.py\", line 50, in <module> from conda_lock.conda_solver import solve_conda File \"/usr/share/miniconda/lib/python3.11/site-packages/conda_lock/conda_solver.py\", line 20, in <module> from conda_lock.invoke_conda import ( File \"/usr/share/miniconda/lib/python3.11/site-packages/conda_lock/invoke_conda.py\", line 15, in <module> from conda_lock.models.channel import Channel File \"/usr/share/miniconda/lib/python3.11/site-packages/conda_lock/models/__init__.py\", line 1, in <module> from pydantic import BaseModel File \"/usr/share/miniconda/lib/python3.11/site-packages/pydantic/__init__.py\", line 372, in __getattr__ module = import_module(module_name, package=package) ^^^^^^^^^^^^^^^^^^^^^^^...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "KNearestNeighbors dedicated API for unsupervised anomaly detection\n\n### Describe the workflow you want to enable All unsupervised anomaly detection algorithms share a similar API (e.g., IsolationForest, OneSVM) but not KNearestNeighbors... And yet, KNN is one of the most used and robust method. ([URL] Having different API makes it challenging to loop and compare different anomaly detection algorithms... Example: [URL] (KNN is not present) Today, you can detect anomalies with KNN with the code below: [CODE_BLOCK] ### Describe your proposed solution The API I propose should look like this: [CODE_BLOCK] Only 3 lines of codes and the same API as the others (e.g., IsolationForest, OneSVM) ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "RandomForestClassifier allows float max_samples greater than 1 without raising exception\n\n### Describe the bug When using the RandomForestClassifier from scikit-learn, the model allows passing float values greater than 1 for the max_samples parameter without raising an exception, which is unexpected. I expected the code to raise an exception, but it did not. I am using scikit-learn version 1.0.2. For below code example, notebook runs just fine, and doesn't give me any exceptions. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results At least it can throw an exception just like for integer max_samples case. ### Actual Results Code works just fine, without any exceptions. ### Versions [CODE_BLOCK]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Fix version warning banner on the stable documentation page\n\n### Describe the issue linked to the documentation Currently [URL] shows the version warning banner (\"This are the docs for an unstable version\"). <img width=\"1258\" alt=\"Screenshot 2024-05-22 at 09 08 02\" src=\"[URL] I think this is happening because we haven't updated [URL] which lists all the available versions and declares which is the stable version. This file is generated by [CODE] which should run as part of the CI on [CODE]. My guess as to why the file hasn't been updated is that we have not merged a PR since releasing v1.5.0. If I run the script locally it generates the correct content for the [CODE] file. ### Suggest a potential alternative/fix I think the fix is to merge any PR into [CODE] as this will regenerate the [CODE] file. This is because all versions of the documentation read the versions from the same URL, which is based on [CODE].",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "How is the progress of sklearn1.7?[help wanted]\n\n### Describe the workflow you want to enable Excuse me, is sklearn1.7.dev0 available now? How to install it? ### Describe your proposed solution none ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "BUG \"array-like\" in parameter validation treats sparse containers as valid inputs\n\n### Describe the bug In parameter validation there are many places where we use [CODE] so I think at least the former should not be a superset of the latter, but it is the case now. Looking at the class [CODE], it treats the input as valid as long as the input has [CODE], [CODE], or [CODE] and is not a scaler. Clearly both sparse matrices and sparse arrays satisfy this condition, though I think they should be excluded. I propose adding the constraint [CODE] to [CODE]. For more context please see #27950 which tries to extend parameter validation to the new sparse arrays. <details> <summary>Also quoting the <a href=\"[URL] page</a></summary> <p></p> <img src=\"[URL] width=\"80%\" /> </details> ### Steps/Code to Reproduce [CODE_BLOCK] Another example can be [CODE], where the validation for [CODE] does not include [CODE] but tests such as [CODE] are passing even though [CODE] is sparse. ### Expected Results Both should raise [CODE]. ### Actual Results No error. ### Versions ```shell System: python: 3.9.18 | packaged by con...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "error message improvement\n\n### Describe the workflow you want to enable Hi, I think that this error message is misleading [URL] I am basically following the example here [URL] so I have the same [CODE] from that message, it seems that the problem is [CODE], while it is actually [CODE] what do you think? ### Describe your proposed solution you could for instance swap them: \" resource can only be 'n_samples' if max_resources='auto'\" ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Array API support with lazy evaluation\n\nAt the moment, our Array API integration can implicitly assume eager evaluation semantics. Furthermore we did not test our code to see how it would behave with candidate Array API implementations with lazy evaluation semantics (e.g. dask, jax, ...). The purpose of this issue is to track what would be needed to make our Array API estimator work with lazy evaluation. I think we should first investigate where this breaks, then decide whether or not we would like to support lazy evaluation semantics in scikit-learn via the Array API support and if so open a meta-issue to add common test with an estimator tag and progressively fix the Array API estimators to deal with lazy evaluation. Note that are particular point about lazy vs eager evaluation for Array API consuming libraries is being discussed here: - [URL]",
+    "labels": [
+      "RFC"
+    ]
+  },
+  {
+    "text": "PoissonRegressor lbfgs solver giving coefficients of 0 and Runtime Warning\n\n### Describe the bug See the following stack exchange When fitting a Poisson Regression (without regularization) to some dummy data I encounter: - with lbfgs solver, a Runtime Warning, a non-zero intercept and all coefficients as zero - with newton-cholesky solver, coefficients as expected Some people on StackExchange have mentioned it is worth submitting an issue (there was a similar one. ### Steps/Code to Reproduce ```python import statsmodels.api as sm import statsmodels.formula.api as smf import pandas as pd from sklearn.linear_model import PoissonRegressor from sklearn.preprocessing import ( OneHotEncoder, ) data = sm.datasets.get_rdataset('Insurance', package='MASS').data # Fit Poisson regression using formula interface formula = \"Claims ~ C(District, Treatment(1)) + C(Group, Treatment('<1l')) + C(Age, Treatment('<25')) + Holders\" model_smf = smf.poisson(formula=formula, data=data).fit() print(type(model_smf)) print(model_smf.summary()) # with sklearn OneHotEncoder X_train_ohe = OneHotEncoder(sparse_output=False, drop=[1, \"<1l\", \"<25\"]).fit(data[[\"District\", \"Group\", \"Age\"]]) X_train_ohe = pd.DataFrame(X_train_ohe.transform(data[[\"District\", \"Group\", \"Age\"]]), columns=X_train_ohe.get_feature_names_out()) X_train = pd.concat([X_train_ohe, data[[\"Holders\"]]], axis=1) y_train = data[\"Claims\"] # one-hot encode the categorical columns, and drop the baseline column # with lbfgs solver model_sklearn_lb...",
+    "labels": [
+      "Bug",
+      "help wanted"
+    ]
+  },
+  {
+    "text": "Label Encoder example typo\n\n### Describe the issue linked to the documentation In the [Label Encoder]([URL] documentation, the example uses an array to demonstrate the functioning of label encoding. But the arrays used in fit and transform operations are different. For the fit operation, it uses [1,2,2,6] whereas for the transform operation it uses [1,1,2,6] resulting in inconsistency. Just attaching the screen grab of the example code in the documentation. ![Screenshot 2024-11-05 094129]([URL] ### Suggest a potential alternative/fix Change to array in [CODE] to [1,1,2,6]",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Instantiate tunedthresholdCV on google collab failed\n\n### Describe the bug I updated scikit-learn version into google Collab and instantiate TunedThresholdClassifierCV by importing name 'TunedThresholdClassifierCV' from 'sklearn.model_selection' but I got this error [CODE_BLOCK] ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results merely instantiation the new version of scikit learn for TunedThresholdClassifierCV object to not fail. ### Actual Results [CODE_BLOCK] ### Versions [CODE_BLOCK]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "sklearn.tree.export_text failing when feature_names supplied\n\nfolks, I'm not sure why this works for [CODE_BLOCK] but not for [CODE_BLOCK] Can anyone help?",
+    "labels": [
+      "Enhancement",
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Gaussian Mixture: Diagonal covariance vectors might contain unreasonably negative values when the input datatype is np.float32\n\n### Describe the bug The Gaussian Mixture implementation shows numerical instabilities on single-precision floating point input numbers, that even large values of the regularization parameter reg_covar (like 0.1) cannot mitigate. More specifically, diagonal covariance elements must not be negative. However, due to the numerical instabilities intrinsic to floating point arithmetic, they might end up being tiny negative numbers that reg_covar must compensate. It turns out that, for some input float32 , the covariance can reach the unreasonable value of -0.99999979. This is because squaring float32 numbers significantly magnifies their precision errors. The proposed solution consists in converting float32 values to float64 before squaring them. Care must be taken to not increase memory consumption in the overall process. Hence, as avgX_means is equal to avg_means2, the return value can be simplified. ### Steps/Code to Reproduce CODE_BLOCK] ### Expected Results [CODE_BLOCK] ### Actual Results ```python --------------------------------------------------------------------------- ValueError Traceback (most recent call last) Input In [132], in <cell line: 49>() 45 skgm._estimate_gaussian_covariances_diag = _optimized_estimate_gaussian_covariances_diag 48 model = GaussianMixture(n_components=2,covariance_type=\"spherical\", reg_covar=0.1) ---> 49 model.fit(np.a...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Sphinx cross-referencing error \"reference target not found\" in nilearn doc build with sklearn 1.3.1\n\n### Describe the issue linked to the documentation The same Sphinx cross-referencing issue as [URL] (fixed in [URL] seems to have popped up again. Since we run our nilearn doc build in nitpicky mode this causes a failure. We can work around it by just ignoring this warning so this is not urgent but just FYI. <details> <summary>Relevant warnings from nilearn doc build</summary> <br> ```bash /usr/share/miniconda3/envs/testenv/lib/python3.9/site-packages/nilearn/connectome/connectivity_matrices.py:docstring of sklearn.utils._metadata_requests._MetadataRequester.get_metadata_routing:11: WARNING: py:class reference target not found: sklearn.utils.metadata_routing.MetadataRequest /usr/share/miniconda3/envs/testenv/lib/python3.9/site-packages/nilearn/connectome/group_sparse_cov.py:docstring of sklearn.utils._metadata_requests._MetadataRequester.get_metadata_routing:11: WARNING: py:class reference target not found: sklearn.utils.metadata_routing.MetadataRequest /usr/share/miniconda3/envs/testenv/lib/python3.9/site-packages/nilearn/connectome/group_sparse_cov.py:docstring of sklearn.utils._metadata_requests._MetadataRequester.get_metadata_routing:11: WARNING: py:class reference target not found: sklearn.utils.metadata_routing.MetadataRequest /usr/share/miniconda3/envs/testenv/lib/python3.9/site-packages/nilearn/decoding/decoder.py:docstring of sklearn.utils._metadata_requests._Metadata...",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Polynomial features min degree and max degree not working properly\n\n### Describe the bug I'm trying to use the PolynomialFeatures to generate 2nd order terms and exclude linear ones. According to the documentation, this should look like this: [CODE] But when I run the fit() method on this object it throws a ValueError (see below). ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results I expect the method to fit the dataset without throwing a ValueError. The transform() method should then return a matrix with shape (3,7) - 3 data points and 7 features (3 2nd order and 1 bias). ### Actual Results [CODE_BLOCK] ### Versions ```she...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Grid search with predetermined parameter order\n\n### Describe the workflow you want to enable I often have a pipeline with expensive preprocessing, and I tune hyperparameters both for preprocessing and downstream classifier. A toy example with PCA and logistic regression: [CODE_BLOCK] In this setting, preprocessing is recomputed as many times as there are grid elements. This is very wasteful, as for given preprocessing parameters, the params of the downstream classifier can be optimized. The order would then be: [CODE_BLOCK] For logistic regression, this behavior is actually possible by using [CODE]. However, e.g. for Random Forest, it is not (to the best of my knowledge). In fact, this can be always done for any pipeline with estimator at the end, since there can only be one classifier (or estimator in general). This would probably only be relevant to grid search and halving search. For randomized search, a cache for preprocessing output would achieve similar results. ### Describe your proposed solution Additional parameter or setting to grid search, optimizing parameter order. Note that this is not equivalent to pipeline caching: [URL] Caching only saves the fitting time, whereas here I propose caching the actual transformed output and reusing it for tuning classifier hyperparameters. [URL] mentions something about caching transform output, but I haven't found confirmation of this behavior anywhere. ### Describe alternatives you've considered, if relevant This ca...",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "RFC Should cross-validation splitters validate that all classes are represented in each split?\n\nThis is a follow-up to the issue raised in [URL] However, I recall other issues raised for CV estimator in general. So the context is the following: a CV estimator will use an internal cross-validation scheme. When we deal with a classifier, we don't have any safety mechanism in the CV to make sure that the classifier was at least trained on all classes. This could happen for two reasons on the top of the head: (i) the target is sorted and the training folds does not contain all classes and (ii) a class is potentially underrepresented and not selected. In all cases, if the [CODE] does not fail, we still obtain a broken estimator. If it breaks at [CODE] at least this is not silently giving some wrong predictions but this is not a given. However, we don't provide a direct feedback to the user of what went wrong. So I'm wondering if we should have a sort of mechanism in the CV strategies to ensure that at least all classes have been observed at [CODE] time. I don't think that we should touch the estimators because we will repeat a lot of code and fundamentally the issue is raised because of the CV strategies. NB: the same issue could happen with a simple classifier in a cross-validation to evaluate it. This is not necessarily a CV estimator.",
+    "labels": [
+      "RFC"
+    ]
+  },
+  {
+    "text": "BUG internal indexing tools trigger error with pandas < 2.0.0\n\n[#28375]([URL] triggers errors for pandas < 2.0.0, despite just using scikit-learn internal functionalities. As documented in [URL] we have pandas >= 1.1.3.",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "OrdinalEncoder inconsistent with None and [CODE] values\n\nOrdinalEncoder treats [CODE] and [CODE] differently: [CODE_BLOCK] In case 1, [CODE] is treated as a category and encoded. In case 2, [CODE] is passed through and not encoded. Note that, if [CODE] and [CODE] appear, then [CODE] gets encoded and [CODE] gets passed through: [CODE_BLOCK] 1. We can interpret this as is a bug with [CODE], which should encode [CODE] as [CODE] because the default [CODE]. Changing the behavior will break a lot of code because encoding [CODE] has been a feature before [CODE] was introduced 2. Functionally, I think it would be useful to configure [CODE] to be it's own category, such as [CODE], which will give [CODE] the same behavior as [CODE].",
+    "labels": [
+      "RFC"
+    ]
+  },
+  {
+    "text": "[Question, Documentation] Metadata Routing, indicate metadata is required by a method\n\n### Describe the issue linked to the documentation From my understanding, there is no way to specify that some metadata is required with CODE]. Doc: [URL] It is possible to specify that some method will error if it is provided, but no converse option to error if it is not provided. I've also read [SLEP006: estimator = DummyClassifier() # True, False, None, \"sample_weight\" can't indicate that this needs sample weights estimator.set_fit_request(sample_weight=...) custom_evaluator = CustomEvalutor(est...",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Array API tests fail on main\n\n### Describe the bug I ran the Array API tests on main and got 10 failing tests. (Last week, with an older main and everything else the same, I had 4 failing tests.) array_api_compat==1.7.1 I only ran the cpu tests. ### Steps/Code to Reproduce [CODE] ### Expected Results all tests pass ### Actual Results [CODE_BLOCK] ### Versions ```shell System: python: 3.12.2 (main, Apr 18 2024, 11:14:27) [GCC 13.2.1 20230801] executable: /home/stefanie/.pyenv/versions/3.12.2/envs/scikit-learn_dev/bin/python machine: Linux-6.9.5-arch1-1-x86_64-with-glibc2.39 Python dependencies: skle...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "make_regression always generates positive coefficients\n\n### Describe the workflow you want to enable This is my first issue, please forgive the non-standard format. I noticed that when using make_regression to generate random data, I always get positive coefficients.I read the source code and found that this situation may be caused by this code. CODE_BLOCK] [make_regression_source ### Describe your proposed solution In order to be able to generate positive and negative coefficients, modification of the value range can be considered [CODE_BLOCK] ### Describe alternatives you've considered, if relevant _No response_ ### Additional context _No response_",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "BUG: Buffer dtype mismatch on Windows and NumPy 2.0\n\n### Describe the bug Recent Azure CI failure for MNE-Python but this is what's failing on CIs: [CODE_BLOCK] ### Expected Results No error ### Actual Results ``` ______________________________ test_search_light ______________________________ mne\\decoding\\search_light.py:101: in fit estimators = parallel( mne\\decoding\\search_light.py:102: in <genexpr> p_func(self.base_estimator, split, y, pb.subset(pb_idx), fit_params) mne\\decoding\\search_light.py:358: in _sl_fit est.fit(X[..., ii], y, fit_params) C:\\hostedtoolcache\\windows\\Python\\3.11.6\\x64\\Lib\\site-packages\\sklearn\\base.py:1215: in wrapper return fit_method(estimator, args, *kwargs) C:\\hostedtoolcache\\windows\\Python\\3.11.6\\x64\\Lib\\site-packages\\sklearn\\ensemble\\_bagging.py:343: in fit return self._fit(X, y, self.max_samples, sample_weight=sample_weight) C:\\hostedtoolcache\\windows\\Python\\3.11.6\\x64\\Lib\\site-packages\\sklearn\\ensemble\\_bagging.py:478: in _fit all_results = Parallel( C:\\hostedtoolcache\\windows\\Python\\3.11.6\\x64\\Lib\\site-packages\\sklearn\\utils\\parallel.py:67: in __call__ return super().__call__(iterable_with_config) C:\\hostedtoolcache\\windows\\Python\\3.11.6\\x64\\Lib\\site-packages\\joblib\\parallel.py:1900: in __call__ return output if self.return_generator else list(output) C:\\hostedtoolcache\\windows\\Python\\3.11....",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "HDBSCAN error with metric cosine\n\n### Describe the bug Inconsistent HDBSCAN behavior when given a metric that is not supported by KDTree or BallTree. docs [Clang 15.0.0 (clang-1500.1.0.2.5)] executable: /opt/homebrew/opt/python@3.11/bin/python3.11 machine: macOS-14.3.1-arm64-arm-64bit Python dependencies: sklearn: 1.4.1.post1 pip: 24.0 setuptools: 69.0.2 numpy: 1.26.4 scipy: 1.12.0 Cython: 0.29.37 pandas: 2.2.1 matplotlib: 3.8.3 joblib: 1.3.2 threadpoolctl: 3.3.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas num_threads: 16 prefix: libopenblas filepath: /opt/homebrew/lib/python3.11/site-packages/numpy/.dylibs/libopenblas64_.0.dylib version: 0.3.23...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Inconsistent results with same random seed\n\n### Describe the bug I'm not sure this is a bug and I couldn't find anything in the issues archive, but I'm seeing an inconsistency between consecutive runs of kmeans.fit, even when setting the same random seed via np.random.seed or random_state. I pinned it down to multithreading: if I force self._n_threads to 1 inside _kmeans.py/fit the inconsistency goes away. See test code below. Is this expected behavior, and is there a way to eliminate multithreading during fitting? [CODE_BLOCK] ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results min diff: 0.0, max diff: 0.0 min diff: 0.0, max diff: 0.0 min diff: 0.0, max diff: 0.0 min diff: 0.0, max diff: 0.0 min diff: 0.0, max diff: 0.0 min diff: 0.0, max diff: 0.0 ... ### Actual Results min diff: -1.1102230246251565e-16, max diff: 2.220446049250313e-16 min diff: -2.220446049250313e-16, max diff: 1.1102230246251565e-16 min diff: -1.1102230246251565e-16, max diff: 1.1102230246251565e-16 min diff: 0.0, max diff: 0.0 min diff: -1.1102230246251565e-16, max diff: 1.1102230246251565e-16 min diff: -1.110223024...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Segmentation error when calling .fit()\n\n### Describe the bug Hey all, I'm currently busy working on a solution for a classification problem using LogisticRegression from sklearn.linear_model. I'm training multiple classifiers at the same time with the same hyperparameters and only slightly different input. The largest difference is coming from the number of unique labels. I don't have any issues fitting data on a model with size 1.500.000 x 20000 with ~200 unique labels. I do however run into issues when my training data has size 1.000.000 X 11000 with ~2500 labels. I'm executing these on docker containers but after calling .fit my containers exit and get an exit code of 139 indicating a segmentation error. I'm using the saga solver. As far as I know this is not a python error but underlying cython problem and my hunch is that because of my dimensions I'm getting a stack overflow somewhere. I've already checked out the source code but did not find any conclusive answers. My question is: does anyone have an idea where this actually goes wrong and if there is a workaround? I'm running scikit-learn==1.0.2 with Python 3.7.11 ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results No error is thrown. ### Actual Results Nothing in the traceback. My container exits with status code 139. When running this on Jupyter my kernel exits. ### Versions ```shell System: python: 3.7.11 (default, Jul 22 2021, 16:14:15) [GCC 6.3.0 20170516] executable: /usr/local/bin/python machine: Linux...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "[CODE] does not support [CODE] in v1.4.0\n\n### Describe the bug Fitting a CODE] where one of the features has a [CODE] dtype will give an error: [CODE_BLOCK] ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results No error is thrown. ### Actual Results Stacktrace suggests it's related to [CODE] getting support for categorical dtypes in v1.4.0 <details> <summary>stacktrace</summary> ``` File /anaconda/envs/ds_data_schemas/lib/python3.10/site-packages/sklearn/ensemble/_hist_gradient_boosting/gradient_boosting.py:558, in BaseHistGradientBoosting.fit(self, X, y, sample_weight) [556 # time spent predicting X for gradient and hessians update 557 acc_prediction_time = 0.0 --> 558 X, known_categories = self._preprocess_X(X, reset=True) [559](file:///anaconda/envs/ds_data_schemas/lib/python3.10/site-packag...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Suggesting updates on the doc of [CODE]\n\n### Describe the issue linked to the documentation Hi, We discover an inconsistency issue between documentation and code in the class [[CODE]]([URL] As mentioned in the description of parameter [CODE]. > func: function, default=None Function to apply to y before passing to fit. Cannot be set at the same time as transformer. The function needs to return a 2-dimensional array. If func is None, the function used will be the identity function. The most relevant piece of source code looks like this: [CODE_BLOCK] The error in the code mentioned that when [CODE] is provided, [CODE] must also be provided. The constraint is not mentioned in the document. Could you please check it? ### Suggest a potential alternative/fix Maybe you can add the constraint into the document to avoid unnecessary misuse and extra debug efforts.",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Add __get_item__() to FeatureUnion\n\n### Describe the bug When debugging larger pipelines for a consistent syntax we\u2019d like to reference individual sub components of [CODE] by index, slice or tuple name in the same way as the [CODE]. This way user does not need to know the types of the aggregate components. ### Steps/Code to Reproduce for example: [CODE_BLOCK] ### Expected Results would be accessed as: [CODE_BLOCK] ### Actual Results rather than accessing as: [CODE_BLOCK] ### Versions [CODE_BLOCK]",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "ValueError: Only sparse matrices with 32-bit integer indices are accepted.\n\n### Describe the workflow you want to enable The use case that triggers the issue is very simple. I am trying to compute the n-gram features of a tokenized 1M dataset (i.e., from List[str] to List[int]) and then perform clustering on the dataset based on these features. [CODE_BLOCK] However, as the n-gram size or the dataset increases, it is easy to encounter the error shown in the title. ```bash Traceback (most recent call last): 13:50:00.018 File \"<frozen runpy>\", line 198, in _run_module_as_main 13:50:00.019 File \"<frozen runpy>\", line 88, in _run_code 13:50:00.019 File \"/mnt/dolphinfs/hdd_pool/docker/user/hadoop-aipnlp/INS/ruanjunhao04/ruanjunhao/ndp/ndp/marisa_onlyclm.py\", line 432, in <module> 13:50:00.022 main() 13:50:00.022 File \"/mnt/dolphinfs/hdd_pool/docker/user/hadoop-aipnlp/INS/ruanjunhao04/ruanjunhao/ndp/ndp/marisa_onlyclm.py\", line 404, in main 13:50:00.023 clustered_data = ngram_split(train_dataset, max_dataset_size) 13:50:00.023 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 13:50:00.023 File \"/mnt/dolphinfs/hdd_pool/docker/user/hadoop-aipnlp/INS/ruanjunhao04/ruanjunhao/ndp/ndp/marisa_onlyclm.py\", line 340, in ngram_split 13:50:00.024 kmeans.fit(X_tfidf) 13:50:00.024 File \"/mnt/dolphinfs/hdd_pool/docker/user/hadoop-aipnlp/ruanjunhao04/env/rjh/lib/python3.12/site-packages/sklearn/base.py\", line 1473, in wrapper 13:50:00.032 return fit_method(estimator, args, *kwargs) 13:50:00.032 ^^^^^^^...",
+    "labels": [
+      "New Feature"
+    ]
+  },
+  {
+    "text": "Docs instructions for installing LLVM OpenMP with Homebrew may need updating\n\n### Describe the issue linked to the documentation Environment variables CFLAGS, CXXFLAGS, CXXFLAGS mentioned here: [URL] may be for Intel-based Macs only. So when trying to do this: [CODE_BLOCK] I got [CODE] The reason being that [CODE] installed [CODE] here: [CODE] and not here[CODE]. ### Suggest a potential alternative/fix Modify the env variables that I mentioned above to the right path to [CODE] for M2 macs. Please note: - I'm not sure if the variables should be updated or have the two mac versions (Intel vs M1/M2). - I didn't test that all works for an Intel mac. - Modifying the variables to the correct path, I was able to make the new environment.",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "\u26a0\ufe0f CI failed on Wheel builder \u26a0\ufe0f\n\nCI is still failing on Wheel builder",
+    "labels": [
+      "Bug",
+      "Build / CI"
+    ]
+  },
+  {
+    "text": "Haversine distance documentation\n\n### Describe the issue linked to the documentation I would like to propose to update misleading formula for haversine distance: [URL] It is not clear from the page if (x1, y1) is the first vector or (x1, x2). Thus it might be misleading how to read x1, y1, x2, y2. [CODE_BLOCK] ### Suggest a potential alternative/fix [CODE_BLOCK]",
+    "labels": [
+      "help wanted",
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Node Splitting Proxy Improvement\n\n### Describe the issue linked to the documentation While exploring the splitter pyx file in the library's tree folder, I discovered this [current proxy improvement]([URL] which speeds up the process of finding the best split prior to calculating the actual impurity improvement of this best estimated split. I am wondering if there could be some explanation in the documentation for the surrogate proxy improvement. And if this was documented in a paper, perhaps? We were curious about it, and we apologise if we did not see anything in the document or elsewhere that discussed it. The documentation for the proxy improvement function does not appear to be \"thorough\". It would be greatly appreciated. [CODE_BLOCK] Cheers, ### Suggest a potential alternative/fix Either in the code itself or in the documentation, explain briefly that the process of finding the best split differs slightly from the original idea, but that the actual outcome is expected to be the same given that the best estimated split receives the original impurity improvement equation calculated on its split. If interested, we could provide such a pull request, but we would appreciate clarification to see that we are in line with your intention and actual behaviour from what we understood. Cheers.",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Build wheels against Numpy 2 rather than numpy development version\n\nNow that Numpy 2 has been released, I think we don't need to build against numpy-dev (we are using all dev dependencies so scipy-dev as well), i.e. we can revert [URL] i.e. I think we can just remove code like this: [CODE_BLOCK] cc @seberg who did the original PR, in case there may be a reason we want to wait a bit after Numpy 2.0 release and check whether I am not missing anything subtle.",
+    "labels": [
+      "Build / CI"
+    ]
+  },
+  {
+    "text": "Multi-class roc_auc_score raises error when y_true is not sampled with all label of classes\n\n### Describe the bug Sometimes we would like to train or validate a multi-class classification model without using large batch size or the term n_sample in scikit-learn but with too many number of classes n_classes. Let's say n_sample < n_classes. For the example below, CODE] and [CODE]. In deep learning, huge model with high resolution input could lead to this situation easily. The [condition [GCC 10.3.0] executable: /opt/conda/bin/python machine: Linux-4.15.0-171-generic-x86_64-with-glibc2.10 Python dependencies: sklearn: 1.1.2 pip: 22.2.2 setuptools: 59.5.0 numpy: 1.22.3 scipy: 1.6.3 Cython: 0.29.28 pandas: 1.3.5 matplotlib: 3.5.2 joblib: 1.1.0 threadpoolctl: 3.1.0 Built with OpenMP: True threadpoolctl info: user_api: openmp internal_api: openmp prefix: libgomp filepath: /op...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "BayesSearchCV default cv is wrong?\n\n### Describe the issue linked to the documentation Hi, Is there a bug in the Docs for BayesSearchCV where it says that the default value for cv is 3 but I see it using 5 as the default when I run it with no explicit value for cv? [URL] I had a quick look in the code as below, the default in the code that is used seems to be 5. cheers, Rob. --- Versions: import sklearn import skopt print(sklearn.__version__) print(skopt.__version__) 1.0.2 0.9.0 --- Docs from: [URL] cv: int, cross-validation generator or an iterable, optional Determines the cross-validation splitting strategy. Possible inputs for cv are: None, to use the default 3-fold cross validation, ---- [URL] def check_cv(cv=5, y=None, *, classifier=False): \"\"\"Input checker utility for building a cross-validator. --- ### Suggest a potential alternative/fix Change the doc to say 5 fold rather than 3 fold.",
+    "labels": [
+      "Documentation"
+    ]
+  },
+  {
+    "text": "Importing [CODE] forks many processes\n\n### Describe the bug I was trying to investigate why I had a lot of processes being created when running a code of mine. After a lot of investigation, I noticed that just by importing CODE] was enough to see a lot of processes in [CODE]. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results Nothing like that should happen. ### Actual Results ![Screenshot_20230728_145623 [GCC 10.3.0] executable: /home/fernando/phd_workspace/future-shot/venv/bin/python machine: Linux-5.15.120-1-MANJARO-x86_64-with-glibc2.37 Python dependencies: sklearn: 1.3.0 pip: 23.0 setuptools: 67.1.0 numpy: 1.24.2 scipy: 1.10.1 Cython: None pandas: 1.5.3 matplotlib: 3.7.1 joblib: 1.2.0 threadpoolctl: 3.1.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas prefix: libopenblas filepath: /home/fernando/phd_workspace/future-shot/venv/lib/python3.9/site-packages/numpy.libs/libopenblas64_p-r0-15028c96.3.21.so version: 0.3.21 threading_layer: pthreads architecture: SkylakeX num_threads: 16 user_api: openmp internal_api: openmp prefix: libgomp filepath: /home/fernando/phd_workspace/future-shot/venv/lib/python3.9/site-packages/scikit_learn.libs/libgomp-a34b3233.so.1.0.0 version: None num_threads: 16 user_api: blas internal_api: openblas prefix: libopenblas filepath: /home/fernando/phd_workspace/future-shot/venv/lib/python3.9/site-packages/scipy.libs/libopenblasp-r0-41284840.3.18.so version: 0.3.18 threading_layer: pthreads architecture: P...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "OrdinalEncoder becomes slow in presence of numerous [CODE] values\n\n### Describe the bug I want to use ordinalencoder with a feature with ~10 categories, but >99% values nan. Execution time is very slow. ~4min for a 1e5 rows. But strangely enough, if the feature is not sparsed, then fitting time is ~1s Worth mention, that if you use [CODE] the problem with sparse cat feature doesn't happen. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results execution time for sparsed column is also ~1s ### Actual Results execution time for sparsed column is ~4min ### Versions ```shell System: python: 3.9.9 (tags/v3.9.9:ccb0e6a, Nov 15 2021, 18:08:50) [MSC v.1929 64 bit (AMD64)] executable: C:\\--\\python.exe machine: Windows-10-10.0.19043-SP0 Python dependencies: sklearn: 1.1.3 pip: 22.3.1 setuptools: 65.4.1 numpy: 1.23.4 scipy: 1.9.3 Cython: None pandas: 1.5.1 matplotlib: None joblib: 1.2.0 threadpoolctl: 3.1.0 Built with OpenMP: True threadpoolctl info: user_api: openmp internal_api: openmp prefix: vcomp filep...",
+    "labels": [
+      "Enhancement"
+    ]
+  },
+  {
+    "text": "Saving and loading calibratedclassifierCV model (ensemble)\n\n### Describe the bug Unable to load the saved calibratedclassifierCV model to a pickle file (.pkl) trained with cv=n as that is a list of models ### Steps/Code to Reproduce calibratedclassifier.dump('model.pkl') model= pickle.load('model.pkl') ### Expected Results Expected results - model object loaded ### Actual Results Attribute error: _CalibratedClassifier has no attribute 'estimator'. ### Versions [CODE_BLOCK]",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "ENH: Random Forest Classifier oob scaling/parallel\n\nMy team, working on a bioinformatics problem with high feature count (columns/dimensions in [CODE]), noticed that the [CODE] out of bag scoring doesn't scale with [CODE]. To be fair, [CODE] clearly says what it does support, though I do wonder if the out of bag predictions under the hood might also benefit from parallel support. Someone on my team seems to have found that it does help, but implemented externally to sklearn using the exposed base estimators. I suppose it might be nice to have that internally at some point, if there are no design reasons not to? Sample reproducer code with latest stable release ([CODE]) on 16 cores/x86_64 Linux box ([CODE]) is below the fold, and the scaling plot is underneath that. We also use far more estimators and features than that, so the delta is much greater, but the scaling trend is the main observation in any case. <details> ```python from time import perf_counter import numpy as np # sklearn 1.3.2 from sklearn.ensemble import RandomForestClassifier from sklearn.datasets import make_classification import matplotlib matplotlib.use(\"Agg\") import matplotlib.pyplot as plt timings_oob = [] timings_base = [] feature_counts = np.linspace(10, 180_000, 20, dtype=np.int64) for feature_count in feature_counts: X, y = make_classification(n_samples=1_000, n_features=feature_count, random_state=0) for use_oob, timing_list in zip([True, False], [timings_oob, timings_base]): start = perf_counter() c...",
+    "labels": [
+      "Enhancement"
+    ]
+  },
+  {
+    "text": "\"sklearn.utils.estimator_checks.check_transformer_data_not_an_array\" prompts error\n\n### Describe the bug the function sklearn.utils.estimator_checks.check_transformer_data_not_an_array is trying to apply X.tolist(), where X is a pd.DataFrame. This object has no method called \"tolist\" hence it prompts the following error: AttributeError: 'DataFrame' object has no attribute 'tolist' This makes the test function \"check_estimator\" pretty useless since tests can't be completed successfully. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results expected test to pass ### Actual Results test fails due to - \"AttributeError: 'DataFrame' object has no attribute 'tolist'\" ### Versions ```shell System: python: 3.10.8 | packaged by conda-forge | (main, Nov 22 2022, 08:16:33) [MSC v.1929 64 bit (AMD64)] executable: C:\\Users\\tomer\\anaconda3\\envs\\CorrActions\\python.exe machine: Windows-10-10.0.22621-SP0 Python dependencies: sklearn: 1.2.1 pip: 22.3.1 setuptools: 65.6.3 numpy: 1.23.0 scipy: 1.9.3 Cython: None pandas: 1.5.2 matplotlib: 3.6.2 joblib: 1.2.0 threadpoolctl: 3.1.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas prefix: libopenblas filepath: C:\\Users\\tomer\\anaconda3\\envs\\CorrActions\\Lib\\site-packages\\numpy\\.libs\\libopenblas.FB5AE2TYXYH2IJRDKGDGQ3XBKLKTF43H.gfortran-win_amd64.dll version: 0.3.20 threading_layer: pthreads architecture: Haswell num_threads: 8 user_api: openmp internal_api: openmp prefix: vcomp filepath: C:\\Users\\tomer\\anaconda3\\...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Increase minimum Cython version to 0.29.33\n\nRequire minimum Cython version >= 0.29.33 as from this version on Cython supports [CODE] fused types with memory views, see release notes [URL] and the related issue #10624.",
+    "labels": [
+      "Build / CI"
+    ]
+  },
+  {
+    "text": "SimpleImputer does not drop a column full of [CODE] even when [CODE]\n\nThe following code snippet lead to some surprises: [CODE_BLOCK] [CODE_BLOCK] Apparently this is something that we really wanted for backward compatibility when merging [URL] [URL] Now, I'm wondering if we should not deprecate this behaviour since the parameter [CODE] allows to control whether or not we should drop the feature entirely. So I would propose to warn for a change of behaviour when [CODE], [CODE], and that we detect that we have empty feature(s).",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "ColumnTransformers don't honor set_config(transform_output=\"pandas\") when multiprocessing with n_jobs>1\n\n### Describe the bug I'm trying to do a grid search with [CODE], working with pandas output, and it fails despite [CODE] I have to manually [CODE] in the ColumnTransformer for it to work. ### Steps/Code to Reproduce #### Preparation [CODE_BLOCK] This WORKS ([CODE]): [CODE_BLOCK] This FAILS ([CODE]): [CODE_BLOCK] This WORKS again ([CODE] and force output): ```python drop = make_column_transformer(('drop', [0]), remainder='passthrough').set_output(transform='pandas') pipe = mak...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "[CODE] Returns Zero When All Elements Are Same\n\n### Describe the bug When using MinMaxScaler.fit_transform() from scikit-learn, if all elements in a column of data are the same, the scaler transforms these elements to zeros. This behavior might not be intuitive or desired in some cases, as users might expect a different treatment for constant columns (e.g., transforming to ones or maintaining the constant value). If this behavior is expected, feel free to close this issue! ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results It might be more intuitive if constant columns are scaled to a non-zero constant value (e.g., all ones) or maintain their original value. ### Actual Results The constant column ('A') is transformed to all zeros. [CODE_BLOCK] ### Versions ```shell System: python: 3.9.17 (main, Jul 5 2023, 20:41:20) [GCC 11.2.0] executable: /home/guihuan/.conda/envs/py39/bin/python machine: Linux-5.15.0-86-generic-x86_64-with-glibc2.35 Python dependencies: sklearn: 1.3.0 pip: 23.2.1 setuptools: 68.0.0 numpy: 1.24.3 scipy: 1.11.2 Cython: None pandas: 2.1.0 matplotlib: 3.7.2 joblib: 1.3.2 threadpoolctl: 3.2.0 Built with OpenMP: True threadpoolctl info: user_api: blas internal_api: openblas num_threads: 32 prefix: libopenblas filepath: /home/guihuan/.conda/envs/py39/lib/python3.9/site-packages/numpy.libs/libopenblas64_p-r0-15028c96.3.21.so version: 0.3.21 threading_layer: pthreads architecture: Haswell user_api: openmp internal_api: openmp num_threads: 32 prefix: libg...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "BUG: GaussianProcessRegressor.predict inplace modifies input X, when passed via kernel\n\n### Describe the bug In line 425, 426 of /sklearn/gaussian_process/_gpr.py (inside the predict method) y_var is modified in place: [CODE_BLOCK] If a kernel (e.g. a custom kernel) is used that returns X when diag(X) is called (X[:,0] == var == diag(X)) this leads to the modification of the original X vector. So now X == y_var - np.einsum(\"ij,ji->i\", V.T, V). A simple but dirty fix for me is to always make and return a copy, when building a custom kernel: var = np.copy(X[:,0]). But because this error is hard to find and debug, and the documentation does not state that one should make a copy, as well user expectation is that a method call won't modify the input, i suggest the following FIX: # FIX Just replace the in place modification : [CODE] with creation of a new array: [CODE] ### Steps/Code to Reproduce ``` import numpy as np from sklearn.gaussian_process import GaussianProcessRegressor from sklearn.gaussian_process.kernels import Hyperparameter, Kernel min_x = 0 max_x = 50 std = 0.2 stop_time = 50 nr_plot_points = 20 number_of_train_points = 5 class MinT(Kernel): def __init__(self, sigma_0=1.0, sigma_0_bounds=(0.01, 10)): self.sigma_0 = sigma_0 self.sigma_0_bounds = sigma_0_bounds @property def hyperparameter_sigma_0(self): return Hyperparameter(\"sigma_0\", \"numeric\", self.sigma_0_bounds) def __call__(self, X, Y=None, eval_gradient=False): \"\"\"Return the kernel k(X, Y) and optionally its g...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "[CODE] in [CODE]\n\n### Describe the bug I accidentally stumbled onto a [CODE] when executing [CODE]. I hacked into [CODE] to save both the offending [CODE] as well as the randomly generated [CODE], then cut them down to minimal shape that still exhibits the error. This data is attached below in the MCVE. ### Steps/Code to Reproduce [CODE_BLOCK] ### Expected Results No errors ### Actual Results ``` Traceback (most recent call last): File \".../rep_error.py\", line 14, in <module> sklearn.manifold.smacof(dis, init=init, normalized_stress=\"auto\", metric=False, n_init=1) File \".../.direnv/python-3.9.5/lib/python3.9/site-packages/sklearn/manifold/_mds.py\", line 329, in smacof pos, stress, n_iter_ = _smacof_single( File \".../.direnv/python-3.9.5/lib/python3.9/site-packages/sklearn/manifold/_mds.py\", line 128, in _smacof_single dis = euclidean_distances(X) File \".../.direnv/python-3.9.5/lib/python3.9/site-packages/sklearn/metrics/pairwise.py\", line 310, in euclidean_distances X, Y = check_pairwise_arrays(X, Y) File \".../.direnv/python-3.9.5/lib/python3.9/site-packages/sklearn/metrics/pairwise.py\", line 156, in check_pairwise_arrays X = Y = check_array( File \".../.direnv/python-3.9.5/lib/python3.9/site-packages/sklearn/utils/validation.py\", line 959, in check_array _assert_all_finite( File \".../.direnv/python-3.9.5/lib/python3.9/site-packages/sklearn/utils/validation.py\", line 124, ...",
+    "labels": [
+      "Bug"
+    ]
+  },
+  {
+    "text": "Hangs in LogisticRegression with high intercept_scaling number\n\n### Describe the bug When using the [CODE] model with the solver set to [CODE] and specifying the [CODE] parameter, the model hangs without any clear reason. The processing time does not increase gradually with the size of the [CODE] parameter. ### Steps/Code to Reproduce When running on my machine, the code below complete in around 7 seconds. [CODE_BLOCK] However, increasing [CODE] by just one decimal place causes the model to hang indefinitely: [CODE_BLOCK] ### Expected Results I expect the code to finish running in a reasonable time. When [CODE] is set as 1.0e+77, the program finished in around 7 sec. ### Actual Results I terminated the process by after a day, no error trace was given by the program. [CODE_BLOCK] ### Versions ```shell System: p...",
+    "labels": [
+      "Bug"
+    ]
+  }
+]
